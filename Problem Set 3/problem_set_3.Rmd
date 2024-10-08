@@ -1,0 +1,2901 @@
+---
+title: "| ![](../Images/Logo/Logo_KIT.png){width=2in} \\vspace{0.2in} \n`r format(params$title)`\n - Marketing Analytics \\vspace{0.1in} "
+subtitle: "Institute of Information Systems and Marketing (IISM)"
+author: "Julius Korch, Marco Schneider, Stefan Stumpf, Zhaotai Liu \n \\vspace{1in} "
+date: "Last compiled on `r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  pdf_document:
+    toc: true
+params:
+  title: "Problemset 3"
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r include=FALSE}
+install_package_if_required <- function(package_names) {
+  for (package_name in package_names) {
+    if (!requireNamespace(package_name, quietly = TRUE)) {
+      install.packages(package_name)
+    }
+  }
+}
+install_package_if_required(c("tm","gamlr", "distrom" , "openai","SnowballC","wordcloud","NLP","tokenizers","tidyr", "RWeka", "maptpx", "ggplot2","dplyr", "slam","glmnet", "word2vec", "Rtsne","Matrix"))
+
+library(Rtsne)
+library(word2vec)
+library(tm)
+library(SnowballC)
+library(NLP)
+library(tokenizers)
+library(tidyr)
+library(wordcloud)
+library(RWeka)
+library(maptpx)
+library(ggplot2)
+library(openai)
+library(dplyr)
+library(slam)
+library(gamlr)
+library(glmnet)
+library(Matrix)
+
+# Define project colors
+primary <- '#3A6B35'
+secondary <- '#79ab74'
+tertiary <- '#E3B448'
+quaternary <- '#E0A96D'
+quinary <- '#B85042'
+senary <- '#F1AC88'
+septenary <- '#79A7D3'
+octonary <- '#6883BC'
+nonary <- '#8A307F'
+denary <- '#2F3C7E'
+eleventh <- '#FF69B4'
+dark <- '#28282B'
+```
+
+```{r include=FALSE}
+# Custom functions section
+
+# function to filter out specific products
+filter_products <- function(data, products){
+  data_filtered <- data %>%
+    filter(produktname %in% products)
+  return(data_filtered)
+}
+
+# function to filter for a specific rating. It returns all reviews with the specified rating or lower
+filter_rating <- function(data, rating_threshold) {
+  data_filtered <- data %>% 
+    dplyr::filter(rating <= rating_threshold)
+  return(data_filtered)
+}
+
+# function to create a unigram DTM
+create_dtm_uni <- function(data){
+  dtm.docs <- VCorpus(VectorSource(data))
+  data.dtm.uni <- DocumentTermMatrix(dtm.docs, control = list(bounds=list(global=c(5,Inf)))  )
+  return(data.dtm.uni)
+}
+
+
+# function to create a bigram DTM
+create_dtm_bi <- function(data){
+  dtm.docs <- VCorpus(VectorSource(data))
+  
+  BigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
+  data.dtm.bi <- DocumentTermMatrix(dtm.docs, control = list(tokenize=BigramTokenizer, bounds=list(global=c(5,Inf))))
+  return(data.dtm.bi)
+}
+
+
+# function to create a dataframe with the DTM
+create_dataframe_from_dtm <- function(dtm, data, min_freq = 5) {
+  # Check if dtm is a valid matrix or data frame
+  if (!is.matrix(dtm) && !is.data.frame(dtm)) {
+    stop("dtm must be a matrix or a data frame")
+  }
+  
+  # Check if data is a valid data frame
+  if (!is.data.frame(data)) {
+    stop("data must be a data frame")
+  }
+  
+  # Convert DTM to data frame if it's a matrix
+  dtm_df <- as.data.frame(dtm)
+
+  # Merge additional data
+  dtm_df$productname <- data$produktname
+
+  # Remove sparse terms
+  dtm_df <- removeSparseTerms(dtm_df, sparse = 0.99)
+
+  # Filter columns based on minimum frequency
+  dtm_df <- dtm_df[, colSums(dtm_df) > min_freq]
+
+  return(dtm_df)
+}
+
+
+```
+
+
+```{r include=FALSE}
+# Load the data
+data <- read.csv("Material/Data Problem Set 3_Energy Drinks.csv")
+
+# Delete the blank space in the end of the product name
+data$produktname <- gsub(" $", "", data$produktname)
+
+# Combine the columns "title" and "content" to one new column "review"
+data$review <- paste(data$title, data$content, sep = " ")
+
+# For simplicity, we only consider the column "produktname","verified_purchase", "rating","customer_opinion_id","review_id" and "review"
+data_new <- data[,c("produktname","verified_purchase","customer_opinion_id","rating","review_id","review")]
+
+```
+
+```{r include=FALSE}
+# amount of unique review_ids
+print(paste("Amount of unique review_ids: ", length(unique(data$review_id))))
+# amount of unique opinion_ids
+print(paste("Amount of unique opinion_ids: ", length(unique(data$customer_opinion_id))))
+# amount of overall rows in the dataset
+print(paste("Amount of overall rows in the dataset: ", nrow(data)))
+# amount of duplications in the dataset
+duplicate_rows <- duplicated(data_new)
+print(paste("Amount of duplications in the dataset: ", sum(duplicate_rows)))
+
+```
+
+```{r include=FALSE}
+# It looks like the whole dataset has been duplicated 
+# It could be that each unique opinion_id appears twice in the dataset
+# lets print out some opinion_ids with the review column to verify
+opinion_ids_to_filter <- c("101010", "207825", "207827", "207829", "207831", "213422", "213423", "213424", "213425")
+filtered_rows <- data_new[data_new$customer_opinion_id %in% opinion_ids_to_filter, ]
+print(filtered_rows)
+
+```
+
+```{r include=FALSE}
+# yes we can see that each unique opinion id appears twice in the dataset with exactly the same review
+# We now filter out all the duplicates based on the opinion_id
+data_new <- data_new[!duplicated(data_new$customer_opinion_id),]
+
+print(paste("New amount of rows in the dataset: ", nrow(data_new)))
+
+# Now we check for duplications in the dataset again, it should be 0
+duplicate_rows <- duplicated(data_new)
+print(paste("Amount of duplications in the dataset: ", sum(duplicate_rows)))
+
+
+```
+
+# Task 1: Important products features
+
+## Text Pre-processing
+
+Before we analyse the reviews, we perform the preprocessing steps:
+stopwords removal, simplification, stemming and tokenization. In the
+following we explain the reasoning behind our preprocessing decisions.
+
+### Stopwords removal
+
+Our first step of the preprocessing is to remove the stopwords.
+Stopwords are words that are very common in a language and do not add
+value to the analysis. Because in some contexts some stopwords may be
+relevant, we looked up the stopwords list and carefully reasessed which
+words to remove and which words to keep. Especially negative words and
+negotations might, compeltly change the meanonf of a sentence. For
+example "I love that these aren't carbonated I don't drink coffee or
+soda." Removing the negative word would result in a sentence with the
+opposite meaning. We also kept some connection words like "while" (e.g.
+While this is my favorite Monster Drink and I do love them. The price
+for 24 pack is now insane).
+
+Furthermore we also added some words for removal that refer to the names
+of the brand. For example "red", "bull", "monster", "celsius". Since the
+brand information is alreadsy stored in another column, including them
+in the review text could reduce the interpretability of the lasso
+regression results.
+
+```{r include=FALSE}
+# Custom function: Remove stopwords
+remove_stopwords_custom <- function(corpus) {
+    # Define negative words and adjectives to keep
+    neg_words <- c("isn't", "aren't", "wasn't", "weren't", "hasn't", "haven't", "hadn't",
+                   "doesn't", "don't", "won't", "wouldn't", "shan't","didn't",
+                   "shouldn't","can't", "cannot", "couldn't", "mustn't", "while", "no",
+                   "nor")
+
+    add_stopwords <- c("red","bull","monster","celsius")
+    
+    # Combine custom words with standard English stopwords
+    stopwords_custom <- setdiff(stopwords("en"), c(neg_words))
+    stopwords_custom <- unique(c(stopwords_custom, add_stopwords))
+
+    
+    # Apply the function to remove stopwords
+    corpus <- tm_map(corpus, removeWords, stopwords_custom)
+    
+    # Strip leading and trailing whitespace
+    corpus <- tm_map(corpus, stripWhitespace)
+    return(corpus)
+}
+
+
+# Define a function to expand common contractions
+expandContractions <- function(text) {
+    contractions <- c("’re" = " are", "n’t" = " not", "’m" = " am", "’ll" = " will", "’ve" = " have", "’s" = " is")
+    for (contraction in names(contractions)) {
+        # Update the pattern to match contractions that start with an apostrophe
+        text <- gsub(paste0(contraction, "\\b"), contractions[contraction], text, perl = TRUE)
+    }
+    return(text)
+}
+
+# Custom function to preprocess text data
+simplified_text <- function(corpus) {
+    # Expand contractions
+    corpus <- tm_map(corpus, content_transformer(expandContractions)) 
+
+    # Convert to lowercase
+    corpus <- tm_map(corpus, content_transformer(tolower))
+
+    # # Custom function to remove punctuation while keeping dots and hyphens in numbers
+    # removePunctuationCustom <- function(x) {
+    #     gsub("(?<!\\d)[.,;:!?()](?!\\d)|(?<=\\d)[.,;:!?()](?!\\d)", "", x, perl = TRUE)
+    # }
+    
+    # # Apply custom punctuation removal
+    # corpus <- tm_map(corpus, content_transformer(removePunctuationCustom))
+    
+    corpus <- remove_stopwords_custom(corpus)
+    
+    # Remove punctuation
+    corpus <- tm_map(corpus, removePunctuation)
+    
+    # Remove numbers
+    corpus <- tm_map(corpus, removeNumbers)
+    
+    # Strip leading and trailing whitespace
+    corpus <- tm_map(corpus, stripWhitespace)
+    
+    # Remove special marks ¨ ¢ – • ❤ ❤️ ■  ╠  ╔  ╬ » ⭐️
+
+    removeSpecialChars <- function(x) {
+      # Define a pattern that includes all special characters to remove
+      pattern <- "⭐️|¨|¢|–|•|❤|❤️|■|╠|╔|╬|»"
+      
+      # Replace occurrences of the pattern with an empty string
+      gsub(pattern, "", x)
+    }
+    corpus <- tm_map(corpus, content_transformer(removeSpecialChars))
+    return(corpus)
+}
+
+corpus <- Corpus(VectorSource(data_new$review))
+
+#Usage
+corpus_simplication <- simplified_text(corpus)
+
+# To extract the processed text
+data_new$simplication <- sapply(corpus_simplication, as.character)
+
+```
+
+### Simplification
+
+The next step we applied is to simplify the text data. We first convert
+the text to lowercase, remove all punctuation and numbers. Interestingly
+we found out in our data exploration, that most of the time a number was
+present in the review text, it was a number referring to the star rating
+the reviewer has given. The reviewers opinion regarding the price is
+mostly expressed in words (e.g. expensive). Thus we decided after our
+conduction of the analysis, that we delete all numbers from the review
+text. Additionally, we removes whitespaces, special punctuations like
+bullets (•) and different special characters like hearts to remove the
+noise in the data.
+
+### Stemming
+
+Stemming reduces the number of vocabulary variants by removing word
+suffixes, such as removing all "ing" (from "packaging" to "packag") and
+"ed" ("ordered" to "order") forms, thus reducing the dimension of the
+vocabulary. Fortunately, some suffixes with negative connotations, such
+as less ("useless" stays "useless"), were retained. In this large text
+sample, stemming can speed up processing and make the algorithm run more
+efficiently.
+
+```{r include=FALSE}
+# Custom function to apply stemming
+apply_stemming <- function(corpus) {
+    # Apply stemming to the corpus
+    corpus_stemmed <- tm_map(corpus, stemDocument)
+    return(corpus_stemmed)
+}
+
+# Usage
+corpus_stemmed <- apply_stemming(corpus_simplication)
+
+# To extract the processed text with stemming
+data_new$stemming <- sapply(corpus_stemmed, as.character)
+
+```
+
+### Tokenization
+
+Tokenization is the process of splitting a string into a list of
+substrings called tokens. It is essential in our case because it helps
+to prepare the raw text data (reviews) for further analysis, such as
+lasso regression and topic modelling. Here, we split the reviews into
+unigrams. Unigrams are single words that can reveal the importance of
+certain keywords, such as specific ingredients or flavours. Bigrams are
+two words that often occur together in the document and can capture the
+meaning of certain contexts, such as 'good quality' or 'good value',
+which provide a better understanding of whether terms are positively or
+negatively associated. However, we tried our lasso regressions with
+both, unigrams and bigrams to compare the interpret ability of the
+results. We saw that bigrams do not make the interpretation of the
+output easier. In both cases we would need to look at the reviews
+themselves to place the uni/bigrams into context. Additionally we
+checked the wordclouds for both types which confirmed our assumption
+that bigrams do not provide much more information. Therefore, we decided
+to use unigrams because using them is more computational efficient and
+it is easier to look them up in the reviews (and thus put them in
+context and interpret them).
+
+```{r include=FALSE}
+# Create a word cloud with unigrams
+# # Define a function for tokenization into unigrams
+tokenize_uni <- function(x) {
+  unigrams <- unlist(strsplit(as.character(x), " "))
+  return(c(unigrams))
+}
+
+# Apply tokenization
+corpus_token_uni1 <- tm_map(corpus_stemmed, content_transformer(tokenize_uni))
+
+```
+
+```{r eval=FALSE, fig.align='center', fig.asp=0.6, include=FALSE, out.width='70%'}
+# Draw a word cloud
+wordcloud(corpus_token_uni1, min.freq = 1600, random.order = FALSE, rot.per = 0.35, colors = brewer.pal(8, "Dark2"))
+```
+
+## Choose appropriate products
+
+Our main criteria for selecting the products to analyse are number of
+reviews for the products. To perform the analysis we want products with
+a high number of reviews. If we choose products with products with few
+reviews, we may not have enough data to do the analysis. Since the
+number of reviews for products is not in the same order of magnitude as
+the number of the same order of magnitude as the number of reviews for
+other products, comparisons between products lack statistical
+significance. Therefore, we first excluded products products with less
+than 500 reviews.
+
+```{r eval=FALSE, include=FALSE}
+
+# Group the data by produktname and check the number of reviews for each product
+result <- data_new %>% 
+  group_by(produktname) %>% 
+  summarise(n = n()) %>%
+  arrange(desc(n))
+
+# Print the result
+# print(result)
+
+# Plot the result
+ggplot(result, aes(x = reorder(produktname, n), y = n)) + 
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = "Product Name", y = "Number of Reviews", title = "Number of Reviews per Product")
+
+```
+
+```{r echo=FALSE, fig.align='center', fig.asp=0.6, out.width='70%'}
+# Filter out products with less than 500 reviews
+filtered_data <- data_new %>%
+  group_by(produktname) %>%
+  filter(n() >= 500)
+
+# Group the data by produktname and check the number of reviews for each product
+result <- filtered_data %>% 
+  group_by(produktname) %>% 
+  summarise(n = n()) %>%
+  arrange(desc(n))
+
+# rename the Java Monster (Coffee) Loca Moca Energy drink to Java Monster Energy drink
+filtered_data$produktname[filtered_data$produktname == "Java Monster (Coffee) Loca Moca Energy drink"] <- "Java Monster Energy drink"
+
+# Print the result
+# print(result)
+
+# Plot the result
+ggplot(result, aes(x = reorder(produktname, n), y = n)) + 
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = "Product Name", y = "Number of Reviews", title = "Number of Reviews per Product")
+
+```
+
+It would also be interesting for us to see the proportion of verified
+reviews. A review is verified if the customer bought the product
+directly from Amazon. Therefore, it would be preferable to perform the
+analysis only on products with products with only verified reviews, as
+this would guarantee a higher quality of the quality of the reviews,
+since people have actually bought the product and subsequently. In the
+table below, we can see that, with the exception of "V8 +Energy", the
+proportion of verified reviews is around 80%. If we excluded 20% or more
+of all reviews from the analysis, we felt that our dataset would be too
+small for a proper analysis. Therefore, we leave the unverified reviews
+in the dataset.
+
+```{r eval=FALSE, fig.align='center', fig.asp=0.7, include=FALSE, out.width='70%'}
+
+# For each product in the original "data_new" data frame, calculate the proportion of "verified_purchase" == "True"
+result_ver <- filtered_data %>%
+  group_by(produktname) %>%
+  summarise(n = n(), n_ver = sum(verified_purchase == "true"), prop_ver = n_ver/n) %>%
+  arrange(desc(n_ver))
+
+# Print the result
+#print(result_ver)
+
+# Plot the result
+ggplot(result_ver, aes(x = reorder(produktname, prop_ver), y = prop_ver)) + 
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = "Product Name", y = "Proportion of Verified Purchases", title = "Proportion of Verified Purchases per Product")
+
+```
+
+**Explanation for Choosing the 5 Products with most Reviews:**
+
+Within the 10 most reviewed products, there are 5 different kinds of
+Monster and 2 different Red Bull energy drinks. Since on Amazon one can
+write one review for example for a bundle of different Monster energy
+drinks which occurs for all the energy drinks of the bundle, we decided
+to analyse how many reviews are the same in those 7 products most
+reviewed products. If a lot of reviews are the same within those
+products, we should not take them all for the analysis.
+
+By looking at the heatmap above, we can see that there are a lot of
+common reviews between the Monster energy drinks as well as between the
+Red Bull energy drinks. Therefore, we decided to only take one of each
+for the analysis. We chose to take the "Monster Absolutely Zero" and the
+"Red Bull Energy Drink" since they are the most reviewed products of
+their brand. In conclusion, we chose to analyse the 5 products with the
+in total most reviews, namely "Monster Absolutely Zero", "Red Bull
+Energy Drink", "5-hour Energy", "Celsius Healthy Sugar Free" and "V8
++Energy".
+
+```{r include=FALSE}
+# Function to find the number of duplications in the 'review' column between two products
+
+amount_of_dubs_in_reviews <- function(productA, productB, data) {
+  # Ungroup data to remove any existing groupings
+  data <- data %>% ungroup()
+
+  # Filter data for productA and productB and select only 'review' column
+  reviews_productA <- data %>%
+    filter(produktname == productA) %>%
+    select(review)
+  reviews_productB <- data %>%
+    filter(produktname == productB) %>%
+    select(review)
+
+  # Find common reviews between the two sets
+  common_reviews <- intersect(reviews_productA$review, reviews_productB$review)
+  
+  print(paste("The amount of reviews for product", productA, "is:", length(reviews_productA$review)))
+  print(paste("The amount of reviews for product", productB, "is:", length(reviews_productB$review)))
+  # Print the amount of common reviews (duplications)
+  print(paste("The amount of common reviews is:", length(common_reviews)))
+}
+
+
+
+amount_of_dubs_in_reviews("Monster Zero Ultra Energy Drink", "Monster Absolutely Zero", filtered_data)
+
+```
+
+```{r include=FALSE}
+# Function to find the number of review duplications for a list of products
+amountof_dubs_in_product_list <- function(product_list, data) {
+  # Ungroup data to remove any existing groupings
+  data <- data %>% ungroup()
+
+  # Initialize a matrix to store the amount of common reviews
+  common_reviews_matrix <- matrix(nrow = length(product_list), ncol = length(product_list))
+  colnames(common_reviews_matrix) <- product_list
+  rownames(common_reviews_matrix) <- product_list
+
+  # Loop through each product to print individual review counts and calculate common reviews
+  for (i in 1:length(product_list)) {
+    for (j in 1:length(product_list)) {
+      if (i == j) {
+        # No need to compare the product with itself
+        common_reviews_matrix[i, j] <- NA
+      } else {
+        reviews_product_i <- data %>%
+          filter(produktname == product_list[i]) %>%
+          select(review)
+        reviews_product_j <- data %>%
+          filter(produktname == product_list[j]) %>%
+          select(review)
+
+        # Find common reviews between the two products
+        common_reviews <- intersect(reviews_product_i$review, reviews_product_j$review)
+        common_reviews_matrix[i, j] <- length(common_reviews)
+      }
+    }
+    # Print individual product review count
+    print(paste("The amount of reviews for product", product_list[i], "is:", nrow(reviews_product_i)))
+  }
+
+  # Print the matrix of common reviews
+  print("Matrix of common reviews:")
+  print(common_reviews_matrix)
+  return(common_reviews_matrix)
+}
+
+plot_common_reviews <- function(common_reviews_matrix) {
+  # Convert the matrix to a long format for ggplot
+  common_reviews_long <- as.data.frame(as.table(common_reviews_matrix))
+
+  # Plot the heatmap
+  ggplot(common_reviews_long, aes(Var1, Var2, fill = Freq)) +
+    geom_tile() +
+    scale_fill_gradient(low = "white", high = secondary) +
+    theme_minimal() +
+    labs(x = "Product", y = "Product", fill = "Common Reviews",
+         title = "Heatmap of Common Reviews Between Products") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+```
+
+```{r include=FALSE}
+# Example call to the function with a list of products
+product_list <- c("Monster Absolutely Zero","Monster Zero Ultra Energy Drink","Monster Lo-Carb Energy Drink","Monster Assault","Monster Khaos (Juice)","Red Bull Sugarfree","Red Bull Energy Drink")
+
+common_reviews_matrix <- amountof_dubs_in_product_list(product_list, filtered_data)
+```
+
+```{r echo=FALSE, fig.align='center', fig.asp=0.7, out.width='70%'}
+# Plot the heatmap
+plot_common_reviews(common_reviews_matrix)
+```
+
+This leaves us with a dataset with the following amount of observations:
+\small
+
+```{r echo=FALSE}
+#create a dataset with observations of the produktnames we want to analyse
+df_final1 <- filtered_data %>%
+  filter(produktname %in% c("Red Bull Energy Drink", "Monster Absolutely Zero", "5-hour Energy", "Celsius Healthy Sugar Free", "V8 +Energy"))
+
+#unique(df_final1$produktname)
+cat("Number of observations:",nrow(df_final1))
+```
+
+\normalsize
+
+## Lasso Regression for the 5 Products
+
+
+```{r include=FALSE}
+selected_product = c("Red Bull Energy Drink")
+
+# first we filter the data for the product
+data.red_bull <- filter_products(df_final1, selected_product)
+
+# Now we perform the DTM for the selected product
+data.red_bull.dtm.bi <- create_dtm_bi(data.red_bull$stemming)
+
+# Now we run the lasso regression for unigrams
+lasso_bi_red <- gamlr(as.matrix(data.red_bull.dtm.bi), data.red_bull$rating)
+
+coef_red_bull <- coef(lasso_bi_red)
+# sort the terms with the name of the term by their coefficient,with the highest 25 coefficients
+print("Highest coefficients driving star rating:")
+head(sort(coef_red_bull[,1], decreasing = TRUE), n = 25L)
+cat("\n")
+print("Highest coefficients lowering star rating:")
+head(sort(coef_red_bull[,1], decreasing = FALSE), n = 26L)
+```
+
+```{r include=FALSE}
+summary(lasso_bi_red)
+plot(lasso_bi_red)
+```
+
+
+
+### custom_lasso_analysis_uni function
+
+
+```{r include=FALSE}
+custom_lasso_analysis_uni <- function(data, selected_product) {
+
+  # Filter the data for the product
+  data_product <- filter_products(data, selected_product)
+  
+  # Perform the DTM for the selected product
+  data_product_dtm <- create_dtm_uni(data_product$stemming)
+
+  # Run the lasso regression for unigrams
+  lasso_uni <- gamlr(as.matrix(data_product_dtm), data_product$rating)
+
+  coef_product <- coef(lasso_uni)
+  print("Highest coefficients driving star rating before cv:")
+  print(head(sort(coef_product[-1,1], decreasing = TRUE), n = 25L))
+  cat("\n")
+  print("Highest coefficients lowering star rating before cv:")
+  print(head(sort(coef_product[,1], decreasing = FALSE), n = 26L))
+  
+  return(lasso_uni)
+
+  # Cross-validation to find the optimal lambda
+  #cv_lasso_uni <- cv.glmnet(as.matrix(data_product_dtm), data_product$rating, alpha = 1)
+
+  # Find the best lambda
+  #best_lambda <- cv_lasso_uni$lambda.min
+  # Run the lasso regression for unigrams with the best lambda
+  #B_lasso_model <- glmnet(as.matrix(data_product_dtm), data_product$rating, lambda=best_lambda)
+  #B_coef_product <- coef(B_lasso_model)
+
+  #print("Highest coefficients improve star rating after cv:")
+  #print(head(sort(B_coef_product[-1,1], decreasing = TRUE), n = 25L))
+  #cat("\n") 
+  #print("Highest coefficients lowering star rating after cv:")
+  #print(head(sort(B_coef_product[,1], decreasing = FALSE), n = 26L))
+  
+}
+
+```
+
+```{r include=FALSE}
+# average length of reviews and standard deviation and median and 3rd quantile
+avg_length <- mean(nchar(df_final1$review))
+sd_length <- sd(nchar(df_final1$review))
+median_length <- median(nchar(df_final1$review))
+quantile(nchar(df_final1$review), probs = c(0.25, 0.5, 0.75))
+avg_length
+sd_length
+median_length
+quantile(nchar(df_final1$review), probs = c(0.25, 0.5, 0.75))
+
+#Verteilung der Länge der Reviews
+hist(nchar(df_final1$review), breaks = 100, col = "lightblue", main = "Distribution of the length of reviews", xlab = "Length of reviews")
+#boxplot of the length of reviews
+boxplot(nchar(df_final1$review), col = "lightblue", main = "Distribution of the length of reviews", xlab = "Length of reviews")
+```
+
+We now want to find out which aspects of the reviews for these 5
+products have a relatively large effect on their Amazon star ratings.
+This is challenging because of the high dimensionality of the word count
+data. To find the influential aspects, we run a lasso regression on each
+product, which constrains some of the coefficients of terms with small
+effects to zero and thus allows us to exclude them from our analysis.
+Only a few variables/terms will have an effect. Here we have chosen the
+lasso regression, which identifies the best model on the regularisation
+path using the information criterion (AICc) rather than
+cross-validation. This is simply because we were comparing the results
+of the two approaches, which were very similar. Therefore, we chose the
+AICc regularisation path because it has a higher computational
+efficiency. This method identifies the optimal lambda for the model
+based on the AICc (smallest value).\
+We also considered the possibility of adjusting the word count for
+document length, but decided not to implement this. The reason for this
+is that the document size does not vary too much. 75% of all reviews are
+less than or equal to 338 characters. Even though the standard deviation
+of review length is 335 characters, we do not adjust word counts for
+document length because we have large outliers (some over 4000
+characters) that contribute disproportionately to the variation. to the
+variation.\
+
+**Short disclaimer:** In the text we do not refer to the number of
+coefficients. Therefore, we would like to draw your attention to the
+fact that not all of the have the same influence on the Amazon star
+ratings. Terms with higher coefficients influence the ratings more than
+terms with lower coefficients. You can see the exact coefficients by
+looking at the code provided and see which terms are more or less
+important.\
+We also want to mention that not all the words produced by the lasso
+regression are useful for the task. We have therefore selected the most
+appropriate words, placed their meaning in the context of the dataset
+and interpreted them. For example, by analysing the output of the lasso
+regression for "Red Bull Energy Drink", we concluded that the term
+"anyon", which stands for anyone, is not helpful here. This is because
+by looking at the reviews we realised that " anyone" is used in a lot of
+different ways. In "Would recommend to anyone!" the term is used to show
+that the customer would always recommend the product, but in "Why would
+anyone in their right mind pay \$10 more?" the term is used to signal
+that the price is too high. As the meanings of the sentences in which it
+occurs are very different, we decided not to include such terms. A
+second example is "carri". In the reviews, this term is used to
+signalise that when buying online you do not have to carry it home from
+the supermarket, or that a store does not carry it (not in stock), or
+that the packaging makes it easy to carry the cans. We cannot conclude a
+clear meaning for this term and therefore exclude it from our further
+analysis for "Red Bull Energy Drink".\
+
+First, we ran the lasso regression for **"Red Bull Energy Drink"**:
+
+The Amazon star rating here was positively driven by the compared to
+other drinks little chemical taste ("chem"). Interesting is that often
+mothers are highly satisfied customers of this energy drink ("mom").
+Customers appreciated the secure and good packaging ("secur" & "wrap").
+People who were satisfied with the product said it was packed in a way
+that the cans were secure and properly wrapped by additional material.
+Furthermore, it is interesting that satisfied customers mentioned that
+they bought it in a count, e.g. as a 4-pack or 6-pack ("count"). This is
+a good indicator that satisfied customers buy buy more than a single can
+to have several cans at home. Interestingly, satisfied customers
+mentioned that it is a good mixer for alcohol ("mixer"). Positive
+ratings compared this product from Amazon with the product from the
+supermarket ("retail"). Since the ratings were positively driven by this
+term, we expect that buying Red Bull on Amazon has some advantages for
+the customers, e.g. more convenience (no carrying of cans) or a cheaper
+price. Also, a lot of customers seemed to like the taste of this energy
+drink ("nectar"). They compared it to the taste of nectar which stands
+for a sweet and tasty liquid.\
+Reviews which rated "Red Bull Energy Drink" low were driven by the fact
+that people called it a waste of money ("wast"). Fitting to this,
+reviewers mentioned that the price of the product is too high ("expens")
+and that similar products are rated higher by those people ("similar").
+We conclude this from the fact that the coefficient for this term is
+negative and thus, when comparing Red Bull to other drinks, it
+influences the rating negatively. Interesting is that also negative
+reviews were driven by the taste. People called the taste horrible,
+terrible, flat and nasty ("horrible", "terrible", "flat" & "nasti").
+Negative reviews also contained that the cans or package arrived
+damaged, empty or sticky because cans were bust open ("sticki", empti",
+"bust" & "punctur"). A last negative driver is that the consume of this
+product is unhealthy ("healthi") and that it contains aspartame
+(artificial sweetener) ("aspartam"). \small
+
+```{r include=FALSE}
+custom_lasso_analysis_uni(df_final1, "Red Bull Energy Drink")
+```
+
+\normalsize
+```{r eval=FALSE, include=FALSE}
+'chemic: doesnt taste like pure chemicals, mom: often moms like it, secur: secure packing, count: 4pack/6pack, discontinu: should not stop producing it, worri: nothing to worry about with rb, mixer: good mixing with alc, wrap: good packaging, retail: vgl. zu Supermarkt, nectar: asoc. with taste good
+
+wast: waste of money, sticki: sticky cans/packaging, similar: other products better & cheaper, horrible: in different ways (flavour, price, smell), empti: cans arrived empty/damaged, healthi: not healthy, bust: damaged packaging/cans, terribl: more ways (pakaging, taste), punctur: damaged box/cans, flat: tastes flat, aspartam: bad for health, nasti: taste, expens: high price'
+```
+
+Lasso regression for **Monster Absolutely Zero**:
+
+Here, the Amazon star rating is positively influenced by the fact that
+customers report being impressed in general ("impress") and in
+particular by the delicious taste ("delici", "decent"), which is not too
+sweet compared to other energy drinks ("sweet"). Comparing the product
+on Amazon with the product in supermarkets ("retail"), we conclude that
+people prefer to buy it online rather than offline. Although we do not
+know the exact reason for this, it could be because the cans arrived
+undamaged ("undamag", "none") or because it is hard to find in
+supermarkets ("hard"). Interestingly, people attending classes seemed to
+like the product ("class"). This applies to both teachers and students.
+This is consistent with the fact that people report consuming it on a
+daily basis ("daili"). Positive reviews also mention that this drink
+gives a lot of energy ("kick") and customers were positively influenced
+by the good can sizes offered ("ounc").\
+The star rating of Monster Absolutely Zero is negatively influenced by
+people warning potential customers about this product ("beware").
+Customers report that it is a waste of time to try the drink and also a
+waste of money ("wast"). This is consistent with complaints about price
+increases (" increas") and calls for lower prices ("cheap"). The rating
+is also negatively influenced by the packaging. Customers report that
+the cans arrived wet, sticky, broken, exploded, shaken ("wet", "
+sticki", "broken", "explod", "shaken") and poorly packaged/shipped
+("poor"). In addition, the flat taste of the drink led users to rate the
+product low ("flat"). Some customers even summarised their experience
+with this product as horrible ("horribl"). \small
+
+```{r include=FALSE}
+custom_lasso_analysis_uni(df_final1, "Monster Absolutely Zero")
+```
+
+\normalsize
+```{r eval=FALSE, include=FALSE}
+'impress: generally, retail: compared to supermarkets, class: people
+drink it for school (pupils/teachers), delici: taste, undamag:packaging,
+ounc: size of can, daili: people drink it daily
+
+bewar: warning for others, wast: waste of time & money, wet: wet
+packaging, increase: price increase, sticki: sticky packaging/cans,
+poor: mainly packaging/shipping, shaken: shaken cans and flat taste,
+broken: cans broken/packaging, cheap: price, explod: exploded/ damaged
+cans, flat: uncarbonated drink, horribl: general
+```
+
+
+Lasso regression for **5-hour Energy**:
+
+The star rating of "5-hour Energy" is positively influenced by people
+who drink it when they are on holiday (" holiday "). The effect of this
+drink also seems to satisfy customers. It is reported that consumers do
+not experience a"spike", i.e. there are no unusually high peaks and
+subsequent crashes in energy levels. Customers report that this is a
+life-saving energy supply for them ("lifesav"). It also seems to have a
+good effect on metabolism ("metabol") and people report that it works
+well for diabetics ("diabet") as it contains no sugar ("sugar"). The
+fact that people like to drink it ice-cold as a snack also has a
+positive effect on the star rating. The size of the bottle is also a
+positive factor ("pocket"). In addition, compared to previous
+experiences, reviewers are glad to have discovered this product ("glad")
+and to have switched to "5-hour Energy" ("switch").\
+The star rating of "5-hour Energy" is negatively driven by people
+reporting that they dislike the taste ("yuck", " terribl" & "gross").
+The rating is also driven by the reported after effects of this product.
+Customers mentioned that they had various types of attacks, e.g. heart
+or panic attacks ("attack"), felt dizzy ("dizzi"), had unpleasant skin
+sensations ("skin") and had to go to hospital because of the effects of
+5-Hour Energy ("hospit"). This is contrary to the point that a positive
+driver is the "spike"-term. Negative ratings are also driven by people
+reporting that the cans leak into the box ("leak") and that the product
+is a waste of money and time ("wast"). \small
+
+```{r include=FALSE}
+custom_lasso_analysis_uni(df_final1, "5-hour Energy")
+```
+
+\normalsize
+```{r eval=FALSE, include=FALSE}
+'lifesav: lifesaver energy supply, diabet: works good for diabetics, ice:
+people like it esp. ice cold, snack: good as snack, metabol: good effect
+on metabolism, pocket: fits in pocket, sugar: no sugar
+
+yuck: bad taste, wast: waste of money/time, leak: cans leaked into box,
+attack: people experienced heart/panic attacks, terribl: several ways
+(after effects and taste), dizzi: people got dizzy, skin: people
+reported unpleasant skin feelings, hospit: people were brought to
+hospital after drinking, gross: bad taste
+```
+
+Lasso regression for **Celsius Healthy Sugar Free**:
+
+The star rating of "Celsius Healthy Sugar Free" is positively influenced
+by people reporting that the drink did not make them feel ill ("ill").
+Comparing the drink to similar Rockstar energy drinks also has a
+positive effect on the Amazon star rating ("rock"). We conclude that
+customers like this drink more than Rockstar drinks. Customers also like
+that the product is low carb ("carb") and has only ten calories per
+serving ("ten"). This is consistent with the fact that the drink
+contains niacin, a vitamin that helps convert food into energy
+("niacin"), and is high in minerals ("miner"). In addition, customers
+appreciate the power it gives them ("power") and that it lifts their
+mood ("mood"). "Celsius Healthy Sugar Free also seems to be a good drink
+for training ("train").\
+The star rating of "Celsius Healthy Sugar Free" is negatively driven by
+people reporting that it is the worst energy drink they have tried
+("worst"). The rating is also negatively driven by people reporting that
+the drink makes them breathless (" breath "), makes them feel nauseous
+(" nauseous "), and that they dislike the taste ("disgust", "flat",
+"yuck", "nasti", "horribl", "terribl"). Customers also report that the
+cans or the order arrived damaged ("damag") and that they do not like
+that the drink contains guarana ("guarana"). In addition, the change in
+the drink's formula leads to poor ratings ("formula"). \small
+
+```{r include=FALSE}
+custom_lasso_analysis_uni(df_final1, "Celsius Healthy Sugar Free")
+```
+
+\normalsize
+```{r eval=FALSE, include=FALSE}
+'ill: no ill effects, rock: better compared to rockstar,
+carb: low carb, ten: only 10 calories per serving, niacin: ingredient
+(vitamin), power: gives lots of power, miner: high amount of minerals,
+mood: increases the mood a lot, train: helps for training
+
+worst: worst tried energy drink, breath: breathloss,
+nauseous: nauseous feeling, disgust: disg. taste, flat: flat taste,
+yuck: yuck taste, damag: cans/package damaged, guarana: ingredient,
+nasti: taste, horribl: taste, formula: changed the formula (taste),
+terribl: taste
+```
+
+
+Lasso regression for **V8 +Energy**:
+
+"V8+Energy's" star rating is positively influenced by the fact that
+customers had concerns about consuming this product, which disappeared
+after trying ("concern"). This is consistent with customers reporting a
+surprisingly good experience ("surpis"). Customers who commute to work
+seem to like this drink a lot, as this leads to positive ratings ("
+commut"). This product also seems to be a good choice for road trips
+("trip"). Customers also like the taste ("excel", "amaz", "delici",
+"great", "best" & "awesom") and the fact that the drink does not cause a
+crash in energy levels when the effect wears off ("wear"). This fits
+well with the observation that customers appreciate that V8+Energy does
+not have an unpleasantly heavy effect ("jump"). A final point that
+positively influences the Amazon star rating is that customers like this
+online offer because the product is often out of stock in supermarkets
+and customers would like to have a stock of the product at home
+("stock").\
+Interestingly, the star rating of "V8 +Energy" is particularly
+negatively influenced by the taste of the product. This is contrary to
+the observations on drivers for positive ratings. Customers report a
+bland, funny, unnatural, nasty, fake, disgusting and terrible
+(after)taste ("bland", " funni", " unnatur", "nasti", "fake", "disgust"
+& "terribl"). This is consistent with reports that the drink leaves a
+bad feeling/taste in the mouth ("mouth"). In addition, customers report
+that the description of the product on Amazon is misleading as it does
+not state that the drink is sweetened with sucralose ("descript"), which
+is consistent with the negative influence on the rating that the drink
+is sweetened with sucralose ("sucralos"). \small
+
+```{r include=FALSE}
+custom_lasso_analysis_uni(df_final1, "V8 +Energy")
+```
+
+```{r eval=FALSE, include=FALSE}
+
+'fiber: dont know, commut: people who commute to work, excel: excellent
+in several ways (price, taste, product), amaz: amazing in different ways
+(product, flavour), stock: not always stocked up in supermarkter & want
+stock at home, trip: good on road trips, surpris: surprisingly good,
+best: in general (taste, product), wear: no crash when effect wears off,
+awesom: general awesome, delici: taste, great: taste, jump: not
+unpleasantly heavy effect
+
+bland: bland taste, funni: funny aftertaste??, unnatur: unnatural taste,
+descript: misleading description on Amazon (doesnt say that it is
+seweetened with sucralose), nasti: nasty (after)taste, fake: fake
+(after)taste, disgust: taste, terribl: (after)taste, mouth: leaves bad
+taste/feeling, sucralos: sucralose ingredient'
+
+
+```
+
+\normalsize
+
+## Differentiation Factors of the 5 Products:
+
+In order to clearly differentiate the products, we compared the terms of
+our individual lasso regressions. We focused on terms that only appeared
+in one of the products. If the different regressions contained terms
+that were used as synonyms, we also excluded them.\
+**"Red Bull Energy Drink"** is clearly distinguished from other products
+by its low chemical taste compared to other energy drinks ("chemic").
+The lasso regression showed that this is the most important driver of
+positive ratings and is not present in the other products. Another good
+differentiator is that Red Bull is the only product here that contains
+the artificial sweetener aspartame ("aspartam"). A quick Google search
+confirmed this. Customers are bothered by the fact that Red Bull
+contains it, and for all the other products, aspartame did not influence
+the ratings.\
+A product feature that differentiates **"Monster Absolutely Zero"** from
+other energy drinks is that customers appreciate the can sizes ("
+ounc"). It seems that the different sizes offered are perfectly suited
+to customers' needs. As this was not a factor for the other products, we
+conclude that Monster offers its drinks in more appropriate sizes.
+People also report that they drink it daily ("daili") and in class
+("class"). These habits did not have such an impact on the other
+products. We conclude that the differentiation here is that Monster
+Absolutely Zero is consumed more on a daily basis and by teachers or
+students than the other products. Although this is not a concrete
+product feature, we believe that it differentiates the use of the
+products and therefore counts as a differentiating factor.\
+**"5-hour Energy"** does not seem to have such strong differentiators,
+except for the fact that the can fits perfectly into a pocket
+("pocket"). This criterion was not mentioned for other products, but may
+not be very important. Although the rating is positively influenced by
+the fact that the product works well for diabetics ("diabet"), we saw
+from the reviews that this is also true for other products such as
+"Monster Absolutely Zero" or "Celsius Healthy Sugar Free". These
+products are also sugar free, but the reviews are not as affected by
+this fact. Although "5-hour Energy" cannot be properly differentiated by
+product features, we can differentiate it by effect. It is the only
+energy drink where people reported effects so severe that many had to go
+to hospital for strokes, rashes and dizziness.\
+**"Celsius Healthy Sugar Free"** is the energy drink that best convinces
+consumers of its good nutritional values. A serving has a low amount of
+carbohydrates ("carb"), only ten calories ("ten") and a high amount of
+minerals ("miner"). Some reviews of other drinks make similar claims,
+but not to the same extent as for "Celsius Healthy Sugar Free". We
+therefore conclude that this product stands out from other energy
+drinks, especially in the area of health.\
+Lastly, **"V8 +Energy"** differs from other products in the energy boost
+it provides. It is not unpleasantly heavy and customers do not
+experience a crash in energy levels as the effect wears off ("wear").
+So, compared to the other products, the effects seem to be smoother and
+not as strong as, for example, "5-hour Energy". In addition, there seems
+to be a difference in the target group, as compared to the other
+products, many reviewers reported that they drink it during their
+commute to work or during long car trips ("commut" & "trip"). This is
+not the case for the other products. We therefore conclude that V8
++Energy is more suitable for people who are on the move a lot and need a
+gentle energy boost. A negative differentiating factor is the
+aftertaste. Many customers complained about a bad aftertaste. The number
+of complaints is significantly higher than for other products.\
+**In conclusion**, we can see that our products can mainly be
+differentiated by taste (little chemical: Red Bull; bad aftertaste: V8
++Energy), ingredients/nutritional values (aspartame: Red Bull, low carb,
+low calorie and lots of minerals: Celsius Healthy Sugar Free), effect (
+heavy effect: 5-hour Energy, no crash: V8 +Energy), can size (good:
+Monster Absolutely Zero, pocket size: 5-hour Energy) and use (daily & in
+class: Monster Absolutely Zero; on trips/commuting: V8 +Energy). We
+believe these are the most important factors in differentiating the
+products.
+
+## Competitive positioning
+
+```{r include=FALSE}
+
+plot_word_embeddings_by_product <- function(df_train, df, seed = 123) {
+  # Set the seed for reproducibility
+  set.seed(seed)
+  
+  # Combine all reviews into a single text corpus for training
+  text_corpus <- paste(df_train$stemming, collapse = " ")
+
+  # Tokenize the text corpus
+  tokens <- tokenize_uni(text_corpus)
+
+  # Train the Word2Vec model on the entire dataset
+  model <- word2vec(x = tokens, dim = 20, window = 5L, type = "skip-gram", sample = .1, min_count = 1)
+
+  # Flatten the dataframe to have one word per row with its corresponding product
+  long_df <- df %>%
+    tidyr::unnest(list_of_words)
+  
+  # Load your pre-trained Word2Vec model with 2 dimensions
+  model <- word2vec(x=long_df$list_of_words, dim=20, window=5L, type="skip-gram", sample=.1, min_count=1)
+  
+  # Get embeddings for the input words
+  embeddings <- predict(model, newdata = long_df$list_of_words, type = "embedding")
+
+  # Prepare data for plotting
+  plot_data <- data.frame(Word = long_df$list_of_words, 
+                          Product = long_df$product,
+                          X = embeddings[,1], 
+                          Y = embeddings[,2])
+
+  # Plot
+  ggplot(plot_data, aes(x = X, y = Y, label = Word, color = Product)) +
+    geom_text(aes(label=Word), hjust=0.5, vjust=0.5) +
+    xlab("Dimension 1") + ylab("Dimension 2") +
+    scale_color_discrete(name = "Product") +
+    ggtitle("Word Embeddings Visualization by Product")
+}
+
+get_top_words <- function(product) {
+  lasso_1 <- custom_lasso_analysis_uni(data = df_final1, product)
+  sorted_coef <- sort(coef(lasso_1)[-1,1], decreasing = TRUE)
+  top_words <- names(sorted_coef)[1:10]
+  return(top_words)
+}
+
+
+product <- c("Red Bull Energy Drink", "Monster Absolutely Zero", "5-hour Energy", "Celsius Healthy Sugar Free", "V8 +Energy")
+list_of_words <- list(
+  get_top_words("Red Bull Energy Drink"),
+  get_top_words("Monster Absolutely Zero"),
+  get_top_words("5-hour Energy"),
+  get_top_words("Celsius Healthy Sugar Free"),
+  get_top_words("V8 +Energy")
+  
+)
+
+
+'c("chemic", "aspartam", "nectar","secur","retail"),
+  c("ounc", "daili", "class", "delici","retail","kick"),
+  c("diabet","holiday","pocket","attack"),
+  c("carb", "calori", "miner","disgust","ill"),
+  c("wear", "commut", "trip","delici")'
+
+# Create the dataframe ensuring list_of_words is a list-column
+example_df <- data.frame(product, list_of_words = I(list_of_words))
+
+example_df
+# Call the function to plot the word embeddings and draw line between the words for each product
+
+
+
+```
+
+```{r include=FALSE}
+plot_word_embeddings_by_product_pca <- function(df_train, df, seed=123) {
+  # Assuming 'df' is a dataframe with columns 'product' and 'list_of_words'
+  
+  # Set the seed for reproducibility
+  set.seed(seed)
+  
+  # Combine all reviews into a single text corpus for training
+  text_corpus <- paste(df_train$stemming, collapse = " ")
+
+  # Tokenize the text corpus
+  tokens <- tokenize_uni(text_corpus)
+
+  # Train the Word2Vec model on the entire dataset
+  model <- word2vec(x = tokens, dim = 50, window = 5L, type = "skip-gram", sample = .1, min_count = 1)
+
+  # Flatten the dataframe to have one word per row with its corresponding product
+  long_df <- df %>%
+    tidyr::unnest(list_of_words)
+  
+  # Load your pre-trained Word2Vec model with 2 dimensions
+  model <- word2vec(x=long_df$list_of_words, dim=50, window=5L, type="skip-gram", sample=.1, min_count=1)
+  
+  # Get embeddings for the input words
+  embeddings <- predict(model, newdata = long_df$list_of_words, type = "embedding")
+
+  # Use PCA for dimensionality reduction
+  pca_result <- prcomp(embeddings, scale. = TRUE)
+  
+  # Prepare data for plotting
+  plot_data <- data.frame(Word = long_df$list_of_words, 
+                          Product = long_df$product,
+                          PC1 = pca_result$x[,1], 
+                          PC2 = pca_result$x[,2])
+
+  # Plot
+  ggplot(plot_data, aes(x = PC1, y = PC2, label = Word, color = Product)) +
+    geom_text(aes(label=Word), hjust=0.5, vjust=0.5) +
+    xlab("PC1") + ylab("PC2") +
+    scale_color_discrete(name = "Product") +
+    ggtitle("Word Embeddings Visualization by Product")
+}
+
+
+plot_word_embeddings_by_product_pca(df_final1, example_df)
+```
+
+
+```{r include=FALSE}
+# create a list of coefficients for each product
+coef_list_RB_taste <- list(1.0468004,0.2297295,-0.8755844,-0.6298740)
+coef_list_MAZ_taste <- list(0.3580851,0.3175499,-0.5395399)
+coef_list_5h_taste <- list(0.8468004,-0.6317571)
+coef_list_Cel_taste <- list(-1.1138126,-0.9057736,-0.9689879,-0.7109837)
+coef_list_V8_taste <- list(0.1389035,0.1357887,-0.7332064,-0.5092566,-0.4604078,-0.4408921,-0.4381605-0.4149960)
+
+#create a list of the terms for the coefficients
+terms_list_RB_taste <- list("chemic","nectar","flat","nasti")
+terms_list_MAZ_taste <- list("delici","sweet","flat")
+terms_list_5h_taste <- list("yuck","gross")
+terms_list_Cel_taste <- list("disgust","yuck","flat","nasti")
+terms_list_V8_taste <- list("delici","great","bland","funni","unnatur","nasti","fake","disgust")
+
+
+# create a list of effect coefficients for each product
+coef_list_RB_effect <- list(0) #no coefficient
+coef_list_MAZ_effect <- list(0.2190875,-0.5321800)
+coef_list_5h_effect <- list(0.5304309,-0.8119984,-0.8602280,-0.6859693,-1.0651115)
+coef_list_Cel_effect <- list(0.8243193,0.5212190,0.4992530,0.4902638,-1.2078596,-1.3026658)
+coef_list_V8_effect <- list(0.1198120,0.1556308)
+
+
+# list of words for effect
+terms_list_RB_effect <- list("")
+terms_list_MAZ_effect <- list("kick","health")
+terms_list_5h_effect <- list("spike","skin","dizzi","hospit","attack")
+terms_list_Cel_effect <- list("ill","power","mood","train","nauseous","breath")
+terms_list_V8_effect <- list("jump","wear")
+
+```
+Create a simple linear combination $$ y= w_{1}\ast t_{1}+w_{2}\ast t_{2}\cdots $$, where $$ t_{i} $$ is the amount of times a term appears in a products review averaged over the amount of total reviews and $$ w_{i} $$ is some weight based on the coefficient from the lasso regression which should indicate the importance of the term regarding the stars of a product. 
+
+```{r include=FALSE}
+# Custom function to calculate term frequency for specified terms in a given product's reviews
+calculate_term_frequency <- function(df, selected_product, terms) {
+  # Filter the data for the specified product
+  data_product <- filter_products(df, selected_product)
+
+  # Create a Document-Term Matrix (DTM) for the selected product
+  data_product_dtm <- create_dtm_uni(data_product$stemming)
+
+  # Initialize a vector to store term frequencies, defaulting to 0
+  term_freq <- rep(0, length(terms))
+
+  # Calculate frequency for each term, checking if it exists in the DTM
+  for (i in 1:length(terms)) {
+    if (terms[i] %in% colnames(data_product_dtm)) {
+      term_freq[i] <- sum(data_product_dtm[, terms[i]] > 0) / nrow(data_product_dtm)
+    }
+  }
+
+  # Set the names of the term_freq vector to the terms and return it
+  names(term_freq) <- terms
+  return(term_freq)
+}
+
+```
+
+
+```{r}
+# Defining the coefficients for taste and effect
+coef_list_taste <- list(c(1.0468004,0.2297295,-0.8755844,-0.6298740), 
+                        c(0.3580851,0.3175499,-0.5395399),
+                        c(0.8468004,-0.6317571),
+                        c(-1.1138126,-0.9057736,-0.9689879,-0.7109837),
+                        c(0.1389035,-0.7332064,-0.5092566,-0.4604078,-0.4408921,-0.4381605,-0.4149960)
+                        )
+coef_list_effect <- list(c(0), 
+                         c(0.2190875),#,-0.5321800
+                         c(0.5304309,-0.8119984,-0.8602280,-0.6859693,-1.0651115),
+                         c(0.8243193,0.5212190,0.4992530,0.4902638,-1.2078596,-1.3026658),
+                         c(0.1198120,0.1556308)
+                         )
+word_list_taste <- list(c("chemic","nectar","flat","nasti"),
+                        c("delici","sweet","flat"),
+                        c("yuck","gross"),
+                        c("disgust","yuck","flat","nasti"),
+                        c("delici","bland","funni","unnatur","nasti","fake","disgust")
+                        )
+
+word_list_effect <- list(c(""),
+                         c("kick"),#,"health"
+                         c("spike","skin","dizzi","hospit","attack"),
+                         c("ill","power","mood","train","nauseous","breath"),
+                         c("jump","wear")
+                         )
+
+
+# Product list
+product_list <- c("Red Bull Energy Drink", "Monster Absolutely Zero", "5-hour Energy", "Celsius Healthy Sugar Free", "V8 +Energy")
+
+# get the frequencies for each word
+word_list_taste.freq <- list()
+for (i in 1:length(word_list_taste)) {
+  word_list_taste.freq[[i]] <- calculate_term_frequency(df_final1, product_list[i], word_list_taste[[i]])
+}
+
+word_list_effect.freq <- list()
+for (i in 1:length(word_list_effect)) {
+  word_list_effect.freq[[i]] <- calculate_term_frequency(df_final1, product_list[i], word_list_effect[[i]])
+}
+
+# Get amount of reviews for each product
+review_count <- sapply(1:length(product_list), function(i) nrow(filter_products(df_final1, product_list[i])))
+
+# Calculating the sum of coefficients for each product by multiplying the coefficients with the frequencies and dividing by the review count
+taste_sums <- sapply(1:length(word_list_taste), function(i) 
+                    sum(coef_list_taste[[i]] * word_list_taste.freq[[i]]) / review_count[i])
+
+effect_sums <- sapply(1:length(word_list_effect), function(i) 
+                     sum(coef_list_effect[[i]] * word_list_effect.freq[[i]]) / review_count[i])
+
+# Data frame for plotting
+data <- data.frame(Product = product_list, Taste = taste_sums, Effect = effect_sums)
+
+# Plotting using ggplot2
+ggplot(data, aes(x=Taste, y=Effect, label=Product)) +
+    geom_point() +
+    geom_text(vjust=-0.5) +
+    xlab("Taste") +
+    ylab("Effect") +
+    ggtitle("Taste vs Effect for Different Products")
+```
+
+
+Firstly we run the lasso regression for unigrams for all products, in
+order to obtainthe 500 terms with highest positive influence and the 500
+terms with highest negative influence.
+
+```{r include=FALSE}
+
+# Perform the DTM for the selected product
+data_5product_dtm <- create_dtm_uni(df_final1$stemming)
+
+# Run the lasso regression for unigrams
+lasso_uni_5 <- gamlr(as.matrix(data_5product_dtm), df_final1$rating)
+
+coef_product <- coef(lasso_uni_5)
+
+print("Highest coefficients driving star rating before cv:")
+print(head(sort(coef_product[-1,1], decreasing = TRUE), n = 25L))
+cat("\n")
+print("Highest coefficients lowering star rating before cv:")
+print(head(sort(coef_product[,1], decreasing = FALSE), n = 26L))
+```
+
+For each product, we calculate the amount of times a term appears in the
+products' review averaged over the amount of total reviews.
+
+
+
+
+Then we could calculate the weighted score for each product by
+multiplying the term frequency with the coefficient from the lasso
+regression. And come up with a graph to show the competitive positioning
+of the products.
+
+```{r include=FALSE}
+# Define the list of selected products
+selected_product <- c("5-hour Energy", "Celsius Healthy Sugar Free", "Monster Absolutely Zero", "V8 +Energy", "Red Bull Energy Drink")
+
+# Assuming coef_product is already defined and contains coefficients for the terms
+weights <- c(head(sort(coef_product[-1,1], decreasing = TRUE), n =300L), head(sort(coef_product[,1], decreasing = FALSE), n= 300L))
+terms <- names(weights)
+
+
+# Initialize an empty list to store the weighted scores for each product
+weighted_scores_list <- list()
+
+# Initialize an empty list to store the term frequency results for each product
+term_frequency_list <- list()
+
+# Loop through each product and calculate term frequencies (assuming df_final1 is defined and calculate_term_frequency is a defined function)
+for (product in selected_product) {
+  term_freq <- calculate_term_frequency(df_final1, product, terms)
+  term_frequency_list[[product]] <- term_freq
+}
+# Calculate weighted scores for each product
+for (product in selected_product) {
+  term_freq <- term_frequency_list[[product]]
+  
+  # Ensure that the term frequency vector is in the same order as 'terms'
+  term_freq <- term_freq[terms]
+
+  # Calculate weighted score
+  weighted_score <- sum(term_freq * weights)
+
+  # Store the weighted score
+  weighted_scores_list[[product]] <- weighted_score
+}
+
+# Convert the list to a vector for plotting
+weighted_scores_vector <- unlist(weighted_scores_list)
+weighted_scores_vector
+```
+
+```{r echo=FALSE}
+# calculate the average rating for each product
+average_rating <- c()
+for (product in selected_product) {
+  average_rating <- c(average_rating, mean(df_final1$rating[df_final1$produktname == product]))
+}
+
+average_rating
+```
+
+selected_product <- c("5-hour Energy", "Celsius Healthy Sugar Free", "Monster Absolutely Zero", "V8 +Energy", "Red Bull Energy Drink")
+
+```{r echo=FALSE}
+# Plotting the results
+barplot(weighted_scores_vector, main = "Weighted Scores of Products", 
+        ylab = "Weighted Score", col = rainbow(length(weighted_scores_vector)),
+        las = 1,
+        cex.names = 0.5) 
+
+```
+
+**Red Bull Energy Drink**: This product has the highest weighted score,
+significantly outperforming the others. This suggests that Red Bull is
+the leading product in terms of the factors measured. This could be due
+to various reasons such as brand strength, flavour preference.As
+analysed above for the individual products is, the Amazon star rating of
+'Red Bull Energy Drink' was positively influenced by the low chemical
+taste and chemical composition ("chem") compared to other drinks. Many
+customers also seemed to like the taste of this energy drink ("nectar").
+
+**5-hour Energy**: This product has the second highest score. This indicates that 5-Hour Energy is a strong competitor in the market, but still significantly behind the market leader. The score may indicate that the advantage of 5-Hour Energy lies in its obvious effect. For example, they targeted students and others who need energy to get through the day/night. When they feel tired, all they need to do is drink a 5-hour Energy drink to stay energised and focused so they can get things done. As a student said,"Drank about half the bottle and was able to concentrate and get a huge chunk of work done. Lifesaver. Will definitely be using in the future as needed."("lifesav") But perhaps because of its intense effects, while it helps consumers maintain energy, it's also the only energy drink whose effects are reported to be so severe that many people have to go to the hospital for strokes, rashes and dizziness("strok")("rash")("dizzi").
+
+**V8 +Energy** : This score of the product suggest that it is a minor player in the market. This could indicate that it has a niche target group or that it does not perform well on the measured factors compared to the others. As analyzed above, compared to "5 Hour Energy", the effect seems smoother but not as intense. And the target group seems to vary, with many reviewers reporting drinking it on their way to work or during long car trips ("commut" & "trip"). 
+
+**Monster Absolutely Zero**:  Monster Absolutely Zero has a noticeable presence in the market, the key is to differentia from other products in terms of product specification. Experience has shown that Monster Energy offers energy drinks in larger sizes("ounc") than Red Bull. This satisfies consumers, especially those who consume energy drinks on a daily basis("daili") or ("class").
+
+
+**Celsius Healthy Sugar Free**: This product's score is close to
+Monster Absolutely Zero, indicating that it's a competitive alternative
+to Monster on the market. Its position suggests that it appeals to a
+similar customer base, possibly with a focus on health-conscious
+consumers given its Healthy Sugar Free descriptor. There is also some
+evidence to support this point. For example, the term "niacin" has a
+positive effect on the star rating of "Celsius Healthy Sugar Free", and
+niacin plays a role in maintaining skin health, supporting nervous
+system function and improving cholesterol levels. One serving is low in carbohydrates ("carb"), only ten calories ("ten"), and high in minerals ("minerals"). It also attracts consumers with health requirements.
+
+
+**In conclusion**, the competitive positioning on this graph suggests that Red Bull Energy Drink has a dominant position in the market. The others fall into a hierarchy with 5-Hour Energy a relevantly distant second, which focus on effect of enery drink, followed by V8 +Energy(different target group and smooth effect of energy drink), Monster Absolutely Zero(product specifications) and Celsius Healthy Sugar Free(health care) vying for third. And the average score of their reviews also effectively proves this ranking.
+
+# Task 2: Automated responses to complaints or concerns
+
+## 2.1 Topic modeling
+
+For task 2 we decided to use unigrams. One reason for that is that the
+product with the most negative reviews has about 200 of them, which is
+relatively small, so it could be difficult to extract meaningful
+bigrams. Another reason is that when exploring the data we did a topic
+modeling for both bigrams and unigrams and the results for the unigrams
+were much better interpretable than the result for the bigrams.
+
+Since we have a lot of common reviews between some products we wanted to
+do the topic modeling on a subset of the data. For choosing the products
+we want to include in the topic modeling, we took a look at the amount
+of negative reviews (1 or 2 starts) for every product:
+
+```{r echo=FALSE , fig.align='center', fig.asp=0.7, include=FALSE, out.width='70%'}
+# first we filter the data to only have low ratings
+data.low_ratings <- filter_rating(data_new, 2)
+
+# now we plot the amount of reviews for each product above a threshold of 50 reviews
+data.low_ratings %>%
+  group_by(produktname) %>%
+  filter(n() > 50) %>%
+  summarise(n = n()) %>%
+  ggplot(aes(x = reorder(produktname, n), y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(x = "Product", y = "Number of reviews", title = "Number of negative reviews")
+
+```
+
+As we can see 5-hour energy has the highest amount of negative reviews,
+which is around 200. Since we do not think that 200 reviews are
+sufficient to do the topic modeling we started to include the products
+with the next highest amount of negative reviews. Since we already found
+out that there are a lot of common reviews when looking at product from
+one brand, we decided to only use one product per brand.
+
+So in the end we came up with the same list of the products we chose for
+Task 1, which are:
+
+"5-hour Energy" , "Celsius Healthy Sugar Free" , "Monster Absolutely
+Zero" , "V8 +Energy" & "Red Bull Energy Drink".
+
+```{r include=FALSE}
+selected_product = c("5-hour Energy" , "Celsius Healthy Sugar Free" , "Monster Absolutely Zero" , "V8 +Energy", "Red Bull Energy Drink" )
+
+
+# first we filter the data for the product
+data.1p_filtered <- filter_products(df_final1, selected_product)
+print(paste("We still have this ", nrow(data.1p_filtered), " amount of reviews left after filtering for the product ", selected_product))
+
+# next we filter for only reviews with a rating lower than 3
+data.1p_filtered <- filter_rating(data.1p_filtered, 2)
+print(paste("We still have this ", nrow(data.1p_filtered), " amount of reviews left after filtering for the rating ", selected_product))
+
+print("Now we perform the DTM")
+# Now we perform the DTM for the selected product
+data.1p_filtered.dtm.uni <- create_dtm_uni(data.1p_filtered$stemming )
+inspect(data.1p_filtered.dtm.uni)
+
+```
+
+When filtering the dataset for this products, we have 745 reviews among
+the 5 different products, which should be distinct from each other.
+
+After choosing the products we wanted to determine how many topics are
+the optimal amount for this dataset. Therefore we calculated the Bayes
+Factor for different amounts of topics (2-6):
+
+```{r include=FALSE}
+# Lets create a simple topic model for unigrams
+dtm_unigram_matrix <- as.simple_triplet_matrix(data.1p_filtered.dtm.uni)
+
+topics.exploration <- topics(dtm_unigram_matrix, K=c(2,3,4,5,6,7,8,9))
+```
+
+The results we obtained are in the following table:
+
+| number of topics | log BF  |
+|------------------|---------|
+| 2                | 6377.07 |
+| 3                | 7645.57 |
+| 4                | 7950.61 |
+| 5                | 7915.1  |
+| 6                | 7843.64 |
+
+Since the model with 4 different topics obtained the highest result, we
+decided to use 4 topics for the further analysis. So firstly we run the
+topic modeling with 4 different topics:
+
+\small
+
+```{r include=FALSE}
+
+amount_of_topics = 4
+# For Unigram DTM
+topic_model_unigram <- topics(dtm_unigram_matrix, K = amount_of_topics)
+
+# Inspecting topics for unigram model
+# This just shows the topic distribution for the first 10 documents
+head(topic_model_unigram$theta, 10) 
+```
+
+```{r echo=FALSE}
+summary(topic_model_unigram)
+```
+
+\normalsize
+
+Here we obtain the model summary, as we can see the Dispersion is 1,63.
+Also it shows the 5 most important words per topic, but for
+interpretation we want to look at more information since we have
+problems identifying the topics only based on those words.
+
+```{r include=FALSE}
+print_prop_matrix <- function(topic_matrix, amount_of_words=15, value_row="probability") {
+  for (topic in names(topic_matrix)) {
+    # Extract the data for this topic
+    topic_data <- topic_matrix[[topic]]
+    
+    # Get the top N words for concise output (adjust N as needed)
+    N <- min(nrow(topic_data), amount_of_words)
+    top_words <- head(topic_data, N)
+
+    # Print topic header
+    cat(topic, ":\n")
+    
+    # Determine the maximum length of the words for alignment
+    max_word_length <- max(nchar(top_words$word)) + 2
+
+    # Print words in a row
+    for (word in top_words$word) {
+      formatted_word <- sprintf("%-*s", max_word_length, word)
+      cat(formatted_word)
+    }
+    cat("\n")
+
+    # Print probabilities in a row, aligned with the words
+    for (prob in top_words[[value_row]]) {
+      formatted_prob <- sprintf("%-*s", max_word_length, sprintf("%.5f", prob))
+      cat(formatted_prob)
+    }
+    cat("\n\n")
+  }
+}
+
+get_characteristic_words_with_prob <- function(topic_model) {
+  # Extract the topic-term distribution matrix
+  topic_term_matrix <- topic_model$theta
+
+  # Calculate average word probabilities across all topics
+  average_probabilities <- rowMeans(topic_term_matrix)
+
+  # Compare each topic's word probabilities to the average and sort
+  characteristic_words <- lapply(seq_len(ncol(topic_term_matrix)), function(topic_idx) {
+    topic_probs <- topic_term_matrix[, topic_idx]
+    significant_words <- which(topic_probs > average_probabilities)
+
+    # Combine words with their probabilities and sort
+    words_with_probs <- data.frame(
+      word = names(significant_words),
+      probability = topic_probs[significant_words],
+      row.names = NULL
+    )
+    words_with_probs <- words_with_probs[order(-words_with_probs$probability),]
+    return(words_with_probs)
+  })
+
+  names(characteristic_words) <- paste0("Topic ", seq_len(length(characteristic_words)))
+  return(characteristic_words)
+}
+
+get_characteristic_words_with_log_ratio <- function(topic_model) {
+  # Extract the topic-term distribution matrix
+  topic_term_matrix <- topic_model$theta
+
+  # Calculate average word probabilities across all topics
+  average_probabilities <- rowMeans(topic_term_matrix)
+
+  # Compare each topic's word probabilities to the average and sort
+  characteristic_words <- lapply(seq_len(ncol(topic_term_matrix)), function(topic_idx) {
+    topic_probs <- topic_term_matrix[, topic_idx]
+    
+    # Calculate log ratio of topic probability to average probability
+    log_ratios <- log(topic_probs) - log(average_probabilities)
+
+    # Create a dataframe of words, their probabilities, and log ratios
+    words_with_log_ratios <- data.frame(
+      word = names(log_ratios),
+      log_ratio = log_ratios,
+      probability = topic_probs,
+      row.names = NULL
+    )
+    
+    # Sort by log ratio in descending order
+    words_with_log_ratios <- words_with_log_ratios[order(-words_with_log_ratios$log_ratio),]
+    return(words_with_log_ratios)
+  })
+
+  names(characteristic_words) <- paste0("Topic", seq_len(length(characteristic_words)))
+  return(characteristic_words)
+}
+
+
+```
+
+So we calculated the 10 most probable words for every topic. The results
+can be found below:
+
+\tiny
+
+```{r echo=FALSE}
+# print the most prop words for each topic
+top_words_matrix <- get_characteristic_words_with_prob(topic_model_unigram)
+print_prop_matrix(top_words_matrix)
+```
+
+\normalsize
+
+After taking a look at the most probable words we came up with a first
+idea for every topic.
+
+**Topic 1:** This topic seems to be about the taste of the energy drink.
+Our reason for that assumption are that both words "taste" and "flavor"
+seem to appear a lot within that topic. Also noticeable is that like is
+really high in this analysis so it seems that reviewers are rating how
+they liked the taste of the energy drink.
+
+**Topic 2:** By looking at the most probable words of topic 2 it seems
+really clear that this topic is about shipping and packaging issues,
+since we see words like "box", "package", "ship" and "order" in this
+list. Another indicator supporting this interpretation are the words
+"damage" and "open" which could refer to the point that people received
+damaged packages or even a box where the contents of the package were
+broken (energy drink cans).
+
+**Topic 3:** Topic 3 is not that clear when looking only at the 10 most
+probable words. Our idea was that this topic is about people reporting
+how they felt after drinking the energy drinks and which side effects
+they experienced. We come to this assumption because the words "feel"
+and "felt" seem to be important for that topic. Also that "effect"
+appears in this list is another indicator that topic 3 is about the
+influence of the energy drink on the people.
+
+**Topic 4:** The idea we had is that this topic could be about price
+complains of customers. One reason for that assumption is that "buy" and
+"price" are the most probable words in this topic (and "money" is also
+part of the most probable words) and we would think that customers who
+use the word price in their review (which only had 1 or 2 stars) were
+not satisfied with the offer they got. Also maybe the presence of the
+word "store" could support this, because people may indicate that they
+could get a better price at a physical store than on amazon.
+
+Since we had issues interpreting all the topics only from the list of
+the most probable words, especially topic 4, we also conducted a
+analysis which delivers the words with the "most pronounced difference
+to average per topic".
+
+\tiny
+
+```{r echo=FALSE}
+# print the most pronounced difference to average per topic
+diff_to_avg_per_topic <- get_characteristic_words_with_log_ratio(topic_model_unigram)
+print_prop_matrix(diff_to_avg_per_topic, value_row = "log_ratio")
+```
+
+\normalsize
+
+**Topic 1:** This results seem to support our assumption that this topic
+is about the taste of the product, since we obtain words which are used
+to define the taste ("mango", "peach", "citrus"). Also the words
+"artificial" and "aftertaste" probably refer to the taste experience the
+consumer had. Therefore we concluded that topic 1 is **overall taste**.
+
+**Topic 2:** Now we find even more words which could suggest that people
+received a damaged package ("damage", "leak", "explode", "broken" and
+"wet"). Here also the results support the hypothesis that topic 2 is
+about shipping and packaging issues. So our our definition for this
+topic is **shipment & packaging**.
+
+**Topic 3:** Here also the results support the idea that topic 3 is
+about the unwanted effects of the energy drink on the consumer, because
+we find a lot of words which probably describe the feeling of the
+consumer after drinking an energy drink ("tired", "jittery", "headach",
+"sick"). So we defined this topic as **negative effects**.
+
+**Topic 4:** Now we find even more words which could refer to the price
+the customers paid . Even "overpriced" is now part of that analysis. But
+also we find a lot of ingredients for energy drinks in this list such as
+taurin and guarana. But this could be because the reviewers may think
+that they paid to much for what is really inside the drink. So we would
+conclude that topic 4 refers to the **price-performance ratio**.
+
+```{r include=FALSE}
+# add your topic names here
+list_of_topic_names <- c("overall taste", "shipment & packaging", "negative effects", "price-performance ratio")
+
+# add your topic descriptions here:
+topic_descriptions <- c(
+  "overall taste: The reviewer talks about the taste of the product which he experienced as bad",
+  "shipment & packaging: The reviewer had issues with the shipment and packaging, because the package didnt      arrive in the way the customer expected, especially because the cans inside the package were damaged ",
+  "negative effects: The reviewer talks about side effects he experienced after drinking the energy drink, which   lead to negative consequences for the consumer.",
+  "price-performance ratio: The reviewer talks about the price of the product and whether the product is worth the price, because he felt like that the price was to high.")
+
+```
+
+## 2.2 Predicting the dominating topic
+
+Now we want to create a function that predicts the dominating topic of a
+review. So even if the customer had more than one issue with the product
+and mentioned different topics in his review we want to derive the most
+important topic of the review, so later GPT can create an
+automated answer referring to that topic.
+
+Therefore we created a function which takes the topic modeling and the
+preprocessed review we want to test as an input. Here it is important
+that the preprocessing of the review followed the same steps as the
+preprocessing of the topic modeling, otherwise the function will not
+find a match between the review and the topic modeling. Then we create a
+Document Term Matrix for this single review. After that we compare this
+Matrix with our topic modeling and come up with 5 probabilities (one for
+each topic) that indicate if the topics are part of the review. In the
+end we just compare the 5 different probabilities and search for the
+highest one. Since each probability refers to one topic we than just
+choose the topic with the highest probability.
+
+```{r include=FALSE}
+# function that takes a review and a topic model and returns the topic with the highest probability
+predict_topic_with_maptpx <- function(preprocessed_review, topic_model, dtm) {
+  # Tokenize the review and count the frequency of each term
+  review_source <- VectorSource(preprocessed_review)
+  review_corpus <- VCorpus(review_source)
+  review_dtm <- DocumentTermMatrix(review_corpus, control = list(dictionary = Terms(dtm)))
+
+  # Adjust the review DTM to have the same structure as the training DTM
+  # New terms in the review that are not in the training DTM are ignored
+  review_dtm <- review_dtm[, Terms(dtm)]
+  review_dtm <- cbind(review_dtm, matrix(0, nrow = nrow(review_dtm), ncol = ncol(dtm) - ncol(review_dtm)))
+
+  # Use the predict.topics function from the maptpx package
+  predicted_weights <- predict.topics(topic_model, newcounts = review_dtm)
+  
+  # Extract the most probable topic
+  most_probable_topic <- which.max(colSums(predicted_weights))
+  
+  return(most_probable_topic)
+}
+
+
+```
+
+After building the function we want to test based on a few examples if
+the topic prediction function actually returns the most dominating topic
+and if thats in line with what would a human think when reading the
+review.
+
+### 1. Example
+
+```{r echo=FALSE}
+# take a review from the selected product as an example
+# some example review for testing
+example_review = data.1p_filtered$review[3]
+print(paste("The example review is:"))
+print(example_review)
+example_review_preprocessed = data.1p_filtered$stemming[3]
+
+
+print(paste("The most dominant topic for this review is:", predict_topic_with_maptpx(example_review_preprocessed, topic_model_unigram, data.1p_filtered.dtm.uni)))
+
+```
+
+For this review our algorithm choose topic 2 (shipment & packaging)
+which seems to be accurate since it seems like that the package and the
+contents were damaged, when it arrived.
+
+### 2. Example
+
+```{r echo=FALSE}
+# take a review from the selected product as an example
+# some example review for testing
+example_review = data.1p_filtered$review[23]
+print(paste("The example review is:"))
+print(example_review)
+example_review_preprocessed = data.1p_filtered$stemming[23]
+
+print(paste("The most dominant topic for this review is:", predict_topic_with_maptpx(example_review_preprocessed, topic_model_unigram, data.1p_filtered.dtm.uni)))
+
+```
+
+In this case our prediction also seems to work since the reviewer is
+referring about long-term unwanted effects of the energy drink, which
+could be seen as negative effects which is our definition topic 3.
+
+
+After testing two examples we could see that our prediction model is
+able to predict the right dominant topic for the reviews since the
+results are in line with what we conclude when looking at the reviews.
+
+Now we want to examine which topic is dominating the most reviews and
+how they are distributed. Therefore we calculated the most dominating
+topic for every negative review of the 5 products and plotted the
+distribution of the results:
+
+```{r echo=FALSE, fig.asp=0.5, out.width='70%'}
+# Now lets apply the function to predict the dominating topic for each review
+data.1p_filtered$dominating_topic <- sapply(data.1p_filtered$stemming, predict_topic_with_maptpx, topic_model_unigram, data.1p_filtered.dtm.uni)
+
+
+data.1p_filtered$dominating_topic_name <- ifelse(data.1p_filtered$dominating_topic == 1, "overall taste",
+                    ifelse(data.1p_filtered$dominating_topic == 2, "shipment & packaging",
+                           ifelse(data.1p_filtered$dominating_topic == 3, "negative effects",
+                                  ifelse(data.1p_filtered$dominating_topic == 4, "price-performance ratio", NA))))
+
+# after that we plot the distribution of the dominating topics
+data.1p_filtered %>%
+  group_by(dominating_topic) %>%
+  summarise(n = n()) %>%
+  ggplot(aes(x = reorder(dominating_topic, n), y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(x = "Topic", y = "Number of reviews", title = "Number of reviews for each topic")
+
+```
+
+As we can see the most often dominating topic is "overall taste" with
+more than 220 reviews. So the biggest amount of people is concerned with
+the taste of the products. This is followed by "shipment & packaging",
+which seems to be the dominating topic of around 180 reviews. The least
+often dominating topic when doing our prediction is the
+price-performance ratio.
+
+## 2.3 Automated answers based on the prediction function
+
+Now we set up GPT 4 to write automated responses to the reviews. Since
+we should use our dominant topic prediction for this task, we calculated
+the dominating topic for each review according to the function we built
+in 2.2.
+
+```{r include=FALSE}
+# api_key <- ""
+Sys.setenv(OPENAI_API_KEY = api_key)  # Set your API key
+
+
+ask_gpt <- function(prompt, few_shot_examples = NULL, temperature = 0.7, max_tokens = 100, verbose=FALSE) {
+  # Create an initial list from the few_shot_examples
+  messages_list <- list()
+
+  # Append the user's prompt to the messages_list
+  messages_list <- c(messages_list, list(list("role" = "user", "content" = prompt)))
+  
+  if (!is.null(few_shot_examples)) {
+    # Add the header "Examples: \n" once, before adding any examples
+    messages_list <- c(messages_list, list(list("role" = "system", "content" = "Examples: \n")))
+  
+    # Append each few_shot_example to the messages_list
+    for(example in few_shot_examples) {
+      messages_list <- c(messages_list, list(list("role" = example$role, "content" = example$content)))
+    }
+  }
+
+  
+  if(verbose) {
+    print("The messages list is:")
+    print(messages_list)
+  }
+
+  # Call the create_chat_completion function
+  answer <- create_chat_completion(model = "gpt-4-1106-preview", 
+                                   temperature = temperature,
+                                   max_tokens = max_tokens,
+                                   messages = messages_list)
+
+  # Return the content of the response message
+  return(answer$choices$message.content)
+}
+```
+
+### Testing the answers
+
+Since GPT could deliver different answers based on the instructions we
+set up 5 different prompts to test which one works best. After that we
+conducted a small survey where we showed participants answers of every
+prompt on 5 different reviews (index numbers: 3, 16, 23, 561, 654) and
+asked them to rate every answer on a scale of 1-5. Then we can derive
+the score for every prompt and chose the one with the highest results
+for our final prompt.
+
+Since we want to show you an example that the different prompts lead to
+different answers of GPT we chose the following review for doing that:
+
+"it seems like every other month I have busted cans I have a
+subscription that I will be cancelling, it seems like every other month
+I have busted cans. This month I had 3 broken cans and the mail man
+would not even deliver it because the box was falling apart, so I had to
+leave work early to pick it up from the post office. It then takes me
+another 20 minutes to clean all the good cans up. I love the idea of
+having this product come right to my doorstep but not if it creates more
+work for me."
+
+```{r eval=FALSE, include=FALSE}
+# some example review for testing
+example_review = data.1p_filtered$review[112]
+print(paste("The example review is:"))
+print(example_review)
+example_review_preprocessed = data.1p_filtered$stemming[112]
+
+dominant_topic_index <- predict_topic_with_maptpx(preprocessed_review = example_review_preprocessed,
+                                                  topic_model = topic_model_unigram,
+                                                  dtm = data.1p_filtered.dtm.uni)
+dominant_topic_by_name <- list_of_topic_names[dominant_topic_index]
+print(paste("The dominant topic for the example review is:", dominant_topic_by_name))
+dominant_topic_description <- topic_descriptions[dominant_topic_index]
+print(paste("The description of the dominant topic is:", dominant_topic_description))
+
+```
+
+### 1. Basic prompt
+
+First we set up a prompt which takes the review, the topic we found out
+through our topic prediction approach and a short description of the
+topic. Also we gave it the following instruction to start with: "You are
+an helpful assistant that understands the customers needs to answer
+them. You are given a negative review of a energy drink product from
+consumers which are unhappy with the product. Also you are given the
+main topic of the review and the explanation of the topic as topic
+description. Given the content of review and the topic of the review
+formulate an answer. You have the following restrictions which you must
+adhere to in any case: - Do not make anything up you don't know"
+
+```{r include=FALSE}
+# This is the prompt generation if GPT should compose a answer addressing the concerns 
+# of a negative review based on a dominant topic
+few_shot_examples <- list(
+  list("role" = "user", "content" = "Review: It doesn't work." , "Topic: effectiveness"),
+  list("role" = "assistant", "content" = "Dear customer. I am deeply sory to hear that you are not satisfied with
+       the effectiveness of our product. I understand that the product didn't work for you and therefore we are 
+       happy to refund you the money. "),
+  list("role" = "user", "content" = "Review: It tastes bad!" , "Topic: taste"),
+  list("role" = "assistant", "content" = "Dear customer. I am deeply sory to hear that you are not satisfied with
+       our product. I understand that the product didn't taste good for you and therefore we are happy to refund
+       you the money.")
+)
+
+create_adress_concerns_prompt_template_basic <- function(review,
+                                                   topic_name,
+                                                   topic_description) {
+  prompt_template.adress_concerns <- paste("You are an helpful assistant that understands the customers needs to answer them. You are given a negative review of a energy drink product from consumers which are unhappy with the product.  Also you are given the main topic of the review and the explanation of the topic as topic description. Given the content of review and the topic of the review formulate an answer."
+    , "You have the following restrictions which you must adhere to in any case: "
+    , "- Do not make anything up you don't know" 
+    , "Review: ", review 
+    , "Topic: ", topic_name
+    , "Topic description: ", topic_description)
+  
+  return(prompt_template.adress_concerns)
+}
+```
+
+```{r eval=FALSE, include=FALSE}
+# some example review for testing
+example_review = data.1p_filtered$review[112]
+print(paste("The example review is:"))
+print(example_review)
+example_review_preprocessed = data.1p_filtered$stemming[112]
+
+# Now we first create a prompt using the template generator
+template <- create_adress_concerns_prompt_template_basic(review = example_review,
+                                                    topic_name = dominant_topic_by_name,
+                                                    topic_description = dominant_topic_description)
+
+
+
+# now we ask gpt
+print("------")
+print("The answer from gpt is:")
+response <- ask_gpt(template, temperature = 0, max_tokens=400, verbose=FALSE)
+print(response)
+```
+
+Using this prompt the answer for our example review was good but way to
+long for a short answer to a review. Often times we couldn't even
+retrive an answer because the answer was to long.
+
+```{r eval=FALSE, include=FALSE}
+"Dear valued customer,
+
+Thank you for taking the time to provide your feedback regarding the
+shipment and packaging of your energy drink subscription. We are truly
+sorry to hear about the recurring issues you've experienced with the
+delivery of your orders, including the most recent incident with the
+damaged cans and the inconvenience it caused you.
+
+We understand that receiving your product in perfect condition is of
+utmost importance and it's clear that we have not met those expectations
+in this instance. The experience you described with the packaging not
+being sturdy enough to protect the cans during transit is certainly not
+the level of quality we strive to provide.
+
+Please rest assured that we take your concerns seriously. We are
+committed to investigating this matter to understand where the breakdown
+occurred in the shipping process and to ensure that corrective measures
+are taken. Our goal is to provide not only a high-quality product but
+also a seamless delivery experience.
+
+To help resolve this issue, we would like to offer you a replacement for
+the damaged cans at no additional cost to you. Additionally, we will be
+reviewing our packaging and shipment procedures with our delivery
+partners to prevent such incidents from happening in the future.
+
+We value your business and would like to retain you as a customer. If
+you are willing to give us another chance, please contact our customer
+service team at your earliest convenience so we can make this right.
+Your satisfaction is our priority, and we hope to have the opportunity
+to demonstrate our commitment to quality service.
+
+Thank you again for your feedback, and we apologize for any
+inconvenience this has caused.
+
+Sincerely, [Your Company's Customer Service Team]"
+
+```
+
+### 2. Modifixing the basic prompt
+
+One problem we discovered when we did the first prompt was that GPT
+answered from the perspective of the Red Bull customer service (or other
+energy drink brands). So we clarified in the instructions that this
+answer should be from the perspective of the Amazon customer support.
+Also we added a limit for the characters (500), because when we did not
+do that in the basic prompt we got really long answers (as seen in the
+example) which we feel like are not suited well for the review section
+on amazon.
+
+```{r include=FALSE}
+# This is the prompt generation if GPT should compose a answer addressing the concerns 
+# of a negative review based on a dominant topic
+few_shot_examples <- list(
+  list("role" = "user", "content" = "Review: It doesn't work." , "Topic: effectiveness"),
+  list("role" = "assistant", "content" = "Dear customer. I am deeply sory to hear that you are not satisfied with
+       the effectiveness of our product. I understand that the product didn't work for you and therefore we are 
+       happy to refund you the money. "),
+  list("role" = "user", "content" = "Review: It tastes bad!" , "Topic: taste"),
+  list("role" = "assistant", "content" = "Dear customer. I am deeply sory to hear that you are not satisfied with
+       our product. I understand that the product didn't taste good for you and therefore we are happy to refund
+       you the money.")
+)
+
+create_adress_concerns_prompt_template_modified <- function(review,
+                                                   topic_name,
+                                                   topic_description) {
+  prompt_template.adress_concerns <- paste("You are an helpful assistant who works for amazon that understands the customers needs to answer them. You are given a negative review of a energy drink product from consumers which are unhappy with the product.  Also you are given the main topic of the review and the explanation of the topic as topic description.Given the content of review and the topic of the review you should address the main topic of the customer."
+    , "You have the following restrictions which you must adhere to in any case: "
+    ,"- You keep your responses to no more than 500 characters long (including whitespace)"
+    , "Review: ", review 
+    , "Topic: ", topic_name
+    , "Topic description: ", topic_description)
+  
+  return(prompt_template.adress_concerns)
+}
+```
+
+```{r eval=FALSE, include=FALSE}
+# some example review for testing
+example_review = data.1p_filtered$review[112]
+print(paste("The example review is:"))
+print(example_review)
+example_review_preprocessed = data.1p_filtered$stemming[112]
+
+# Now we first create a prompt using the template generator
+template <- create_adress_concerns_prompt_template_modified(review = example_review,
+                                                    topic_name = dominant_topic_by_name,
+                                                    topic_description = dominant_topic_description)
+
+
+
+# now we ask gpt
+print("------")
+print("The answer from gpt is:")
+response <- ask_gpt(template, temperature = 0, max_tokens=400, verbose=FALSE)
+print(response)
+```
+
+Using this modified prompt the answer for our example review is:
+
+"I'm sorry to hear about the issues with your shipment and packaging. We
+aim for your orders to arrive in perfect condition. Please contact us
+through your Amazon account so we can address this promptly, including
+arranging for a replacement or refund and providing feedback to our
+shipping partners to prevent future occurrences. Your satisfaction is
+our priority."
+
+### 3. Adjustments
+
+Then we noticed that GPT tended to start and end their answer
+differently. Therefore we gave it the restriction that the answer should
+always start with "Dear Customer" and end with ""Best regards from the
+customer service team". Also we saw that it include the term
+"price-performance ratio" in the review which is one of our topics. But
+we think that it is probably better to use the term price instead, since
+some people might not feel addressed when speaking about the ratio.
+
+```{r include=FALSE}
+# This is the prompt generation if GPT should compose a answer addressing the concerns 
+# of a negative review based on a dominant topic
+few_shot_examples <- list(
+  list("role" = "user", "content" = "Review: It doesn't work." , "Topic: effectiveness"),
+  list("role" = "assistant", "content" = "Dear customer. I am deeply sory to hear that you are not satisfied with
+       the effectiveness of our product. I understand that the product didn't work for you and therefore we are 
+       happy to refund you the money. "),
+  list("role" = "user", "content" = "Review: It tastes bad!" , "Topic: taste"),
+  list("role" = "assistant", "content" = "Dear customer. I am deeply sory to hear that you are not satisfied with
+       our product. I understand that the product didn't taste good for you and therefore we are happy to refund
+       you the money.")
+)
+
+create_adress_concerns_prompt_template_spec <- function(review,
+                                                   topic_name,
+                                                   topic_description) {
+  prompt_template.adress_concerns <- paste("You are an helpful assistant who works for amazon that understands the customers needs to answer them. You are given a negative review of a energy drink product from consumers which are unhappy with the product.  Also you are given the main topic of the review and the explanation of the topic as topic description. The topic is explained in more detail in the topic description. Given the content of review and the topic of the review you should address the main topic of the customer."
+    , "You have the following restrictions which you must adhere to in any case: "
+    , "- Do not make anything up you don't know" 
+    ,"- You keep your responses to no more than 500 characters long (including whitespace)"
+    , "- You sign off every message with 'Best regards from the customer service team'"
+    , "- Do not address the reviewer by name, just call him \"customer\". \n" 
+    , "- Start every message with 'Dear customer' "
+    , "- Dont use the term 'price-performance ratio' in the answer, only refer to the price."
+    , "Review: ", review 
+    , "Topic: ", topic_name
+    , "Topic description: " , topic_description)
+  
+  
+  return(prompt_template.adress_concerns)
+}
+```
+
+```{r eval=FALSE, include=FALSE}
+# some example review for testing
+example_review = data.1p_filtered$review[112]
+print(paste("The example review is:"))
+print(example_review)
+example_review_preprocessed = data.1p_filtered$stemming[112]
+
+# Now we first create a prompt using the template generator
+template <- create_adress_concerns_prompt_template_spec(review = example_review,
+                                                    topic_name = dominant_topic_by_name,
+                                                    topic_description = dominant_topic_description)
+
+
+
+# now we ask gpt
+print("------")
+print("The answer from gpt is:")
+response <- ask_gpt(template, temperature = 0, max_tokens=400, verbose=FALSE)
+print(response)
+```
+
+By using this adjusted prompt we are obtaining the following answer:
+
+"Dear customer,
+
+I'm truly sorry to hear about the recurring issues with the shipment and
+packaging of your energy drink order. We take such feedback seriously
+and aim to ensure that all products arrive in perfect condition. Please
+contact us directly so we can assist with a resolution, including a
+replacement or refund for the damaged items.
+
+Best regards from the customer service team"
+
+### 4. Specifications
+
+For the last prompt we became even more specific in the instructions,
+for example explicitly explaining the meaning of the topic description.
+Also we added in the instructions that it should answer "like a
+professional customer service employee" would do to see if that maybe
+increases the quality of the answer. Also in some answers we saw that it
+recommended to look for other retailers. Since we dont feel like that
+this would be a suggestion of the own customer service, we added to the
+list of the restrictions that it should not recommend other retailers.
+Also in cases where the main topic is "negative effects" or "shipment &
+packaging" we wanted that GPT is offering the possibility of contacting
+the customer service for resolution, so we also added that part in the
+instructions.
+
+```{r include=FALSE}
+# This is the prompt generation if GPT should compose a answer addressing the concerns 
+# of a negative review based on a dominant topic
+few_shot_examples <- list(
+  list("role" = "user", "content" = "Review: It doesn't work." , "Topic: effectiveness"),
+  list("role" = "assistant", "content" = "Dear customer. I am deeply sory to hear that you are not satisfied with
+       the effectiveness of our product. I understand that the product didn't work for you and therefore we are 
+       happy to refund you the money. "),
+  list("role" = "user", "content" = "Review: It tastes bad!" , "Topic: taste"),
+  list("role" = "assistant", "content" = "Dear customer. I am deeply sory to hear that you are not satisfied with
+       our product. I understand that the product didn't taste good for you and therefore we are happy to refund
+       you the money.")
+)
+
+create_adress_concerns_prompt_template_more <- function(review,
+                                                   topic_name,
+                                                   topic_description) {
+  prompt_template.adress_concerns <- paste("You are an helpful assistant that works for amazon and understands the customers needs to answer them. You are given a negative review of a energy drink product from consumers which are unhappy with the product.  Also you are given the main topic of the review and the explanation of the topic as topic description. The topic is explained in more detail in the topic description. Given the content of review and the main concern of the review you should address the concern of the customer like a professional customer service employee would do. Make sure you only focus on the main concern of the customer and write a suitable answer addressing the concern."
+    , "You have the following restrictions which you must adhere to in any case: "
+    , "- Do not make anything up you don't know" 
+    , "- You keep your responses to no more than 500 characters long (including whitespace)"
+    , "- You sign off every message with 'Best regards from the customer service team'"
+    , "- Do not address the reviewer by name, just call him 'customer'. \n" 
+    , "- Dont use the term 'price-performance ratio' in the answer, only refer to the price."
+    , "- Do not recommend looking for the product on other retailers"
+    , "- If the topic of the review is 'negative effects' or 'shipment & packaging' offer the customer the possibility to contact the customer service for a resolution"
+    , "- Use we instead of I"
+
+
+    
+    , "Review: ", review 
+    , "Topic: ", topic_name
+    , "Topic description: ", topic_description)
+  
+  return(prompt_template.adress_concerns)
+}
+```
+
+```{r eval=FALSE, include=FALSE}
+# some example review for testing
+example_review = data.1p_filtered$review[654]
+print(paste("The example review is:"))
+print(example_review)
+example_review_preprocessed = data.1p_filtered$stemming[654]
+
+# Now we first create a prompt using the template generator
+template <- create_adress_concerns_prompt_template_more(review = example_review,
+                                                    topic_name = dominant_topic_by_name,
+                                                    topic_description = dominant_topic_description)
+
+
+
+# now we ask gpt
+print("------")
+print("The answer from gpt is:")
+response <- ask_gpt(template, temperature = 0.1, max_tokens=400, verbose=FALSE)
+print(response)
+```
+
+When we use this more specified version of the prompt, the answer for
+the example review is: "Dear customer,
+
+We're sorry to hear about the issues with the shipment and packaging of
+your energy drink order. It's important to us that your products arrive
+in perfect condition. Please reach out to our customer service team so
+we can address this matter promptly and to your satisfaction.
+
+Best regards from the customer service team"
+
+### 5. Reformulating the instruction
+
+Since we only added things to the instruction in the last step we
+decided to completely reformulate the instruction to see if different
+wording could make a difference. But we will keep the list of
+restrictions that we built up through the different prompts since it
+includes basic things like how to address the reviewer and how long the
+answer should be. We changed the instructions in a way that we tell GPT
+to base the answer more on the topic and the topic description of the
+review to be able to determine whether that makes a difference in the
+quality of the answer.
+
+```{r include=FALSE}
+# This is the prompt generation if GPT should compose a answer addressing the concerns 
+# of a negative review based on a dominant topic
+few_shot_examples <- list(
+  list("role" = "user", "content" = "Review: It doesn't work." , "Topic: effectiveness"),
+  list("role" = "assistant", "content" = "Dear customer. I am deeply sory to hear that you are not satisfied with
+       the effectiveness of our product. I understand that the product didn't work for you and therefore we are 
+       happy to refund you the money. "),
+  list("role" = "user", "content" = "Review: It tastes bad!" , "Topic: taste"),
+  list("role" = "assistant", "content" = "Dear customer. I am deeply sory to hear that you are not satisfied with
+       our product. I understand that the product didn't taste good for you and therefore we are happy to refund
+       you the money.")
+)
+
+create_adress_concerns_prompt_template_alternative <- function(review,
+                                                   topic_name,
+                                                   topic_description) {
+  prompt_template.adress_concerns <- paste("You are an amazon customer support team employee that writes automated answers to customer reviews on energy drinks. Therefore you are given the review, the main topic of the review and a description of the main topic. Formulate an answer based on the topic of the review and the topic description."
+    , "You have the following restrictions which you must adhere to in any case: "
+    , "- Do not make anything up you don't know" 
+    , "- You keep your responses to no more than 500 characters long (including whitespace)"
+    , "- You sign off every message with 'Best regards from the customer service team'"
+    , "- Do not address the reviewer by name, just call him 'customer'. \n" 
+    , "- Dont use the term 'price-performance ratio' in the answer, only refer to the price."
+    , "- Do not recommend looking for the product on other retailers"
+    , "- If the topic of the review is 'negative effects' or 'shipment & packaging' offer the customer the possibility to contact the customer service for a resolution"
+    , "- Use we instead of I"
+
+
+    
+    , "Review: ", review 
+    , "Topic: ", topic_name
+    , "Topic description: ", topic_description)
+  
+  return(prompt_template.adress_concerns)
+}
+```
+
+```{r eval=FALSE, include=FALSE}
+# some example review for testing
+example_review = data.1p_filtered$review[112]
+print(paste("The example review is:"))
+print(example_review)
+example_review_preprocessed = data.1p_filtered$stemming[112]
+
+# Now we first create a prompt using the template generator
+template <- create_adress_concerns_prompt_template_alternative(review = example_review,
+                                                    topic_name = dominant_topic_by_name,
+                                                    topic_description = dominant_topic_description)
+
+
+# now we ask gpt
+print("------")
+print("The answer from gpt is:")
+response <- ask_gpt(template, temperature = 0, max_tokens=400, verbose=FALSE)
+print(response)
+```
+
+Now the answer for our example review is:
+
+"Dear customer, We're truly sorry to hear about the recurring issues
+with the shipment and packaging of your energy drink subscription. It's
+important to us that your products arrive in perfect condition. Please
+reach out to our customer service team so we can address this matter
+promptly and ensure your satisfaction with future deliveries.
+
+Best regards from the customer service team"
+
+### Evaluation of the different prompts
+
+Based on our example review we could see that the answer of GPT differs
+between the different prompts we are giving GPT. To be able to rate the
+quality of the answer and after that choose a final prompt we conducted
+a survey where we displayed all alternative answers for a review and
+asked the participants (mainly our group, but also 2 people who are not
+part of the course) to rate the suitability of the answer to the
+specific review on a scale of 1 to 5, where 5 means that the answer is
+perfectly suited for the concern the customer has and 1 that the answer
+is not appropriate at all. The participants were told that they should
+imagine that this answer was posted under the respective review and
+
+Then we calculated the sum of the ratings for every answer and divided
+it by the amount of participants to get the mean score of every answer.
+
+After that we summed up the score for every answer that was generated by
+using the same prompt and divided the result by 5 (since we use 5
+different reviews in this survey). You can find the results of this
+calculation in the table below:
+
+| Prompt   | Average rating over all 5 reviews |
+|----------|-----------------------------------|
+| Prompt 1 | 1,93                              |
+| Prompt 2 | 3,03                              |
+| Prompt 3 | 3,6                               |
+| Prompt 4 | 4,6                               |
+| Prompt 5 | 4,53                              |
+
+Our results show that Prompt 1 delivered the worst answers, probably
+because we did not include a character limit and therefore the answers
+were way to long. We also can see that our modification and adjustments
+seemed to improve the answers of GPT. The last Prompt, where we changed
+the instruction did not change a lot in the quality of the answers,
+since the average rating of our voters is only 0,07 smaller than for
+prompt 4. But since prompt 4 obtained the highest score, we decided to
+use that prompt as our final template for asking GPT to write a response
+to the review. (If you want to test this prompt with your own reviews,
+you can find the corresponding code where you are able to insert a
+review at the end of this document)
+
+## 2.4 Automated answers without prediction function
+
+For testing whether GPT generates better answers when we do not give it
+the topic we derived using our prediction model we developed 2 different
+approaches:
+
+1.  First we want to take a sample of *zahl* and compare the prediction
+    of our prediction model with a prediction of GPT. Therefore we give
+    GPT the review and ask to return the most dominant topic of the
+    review. Here we are especially interested in differences to see if
+    GPT is able to come up with more meaningful or precise models than
+    our prediction using the topic modeling approach.
+
+First we want to take a random sample of 20 reviews and compare the
+prediction of our prediction model with a prediction of GPT. Therefore
+we give GPT the review and ask to return the most dominant topic of the
+review. Therefore we also gave GPT all the topic names and the
+respective description, so that GPT uses the same categories as we did.
+By doing that we are able to analyze whether there are differences
+between our prediction and the one of GPT.
+
+```{r include=FALSE}
+# lets prepare some few-shot prompt templates
+# We need those later to prime the model on how to respond
+few_shot_examples <- list(
+  list("role" = "user", "content" = "Review: It doesn't work."),
+  list("role" = "assistant", "content" = "effectiveness"),
+  list("role" = "user", "content" = "Review: It tastes bad!"),
+  list("role" = "assistant", "content" = "taste")
+)
+
+# lets create a prompt template
+create_find_dominant_topic_prompt <- function(review,
+                                              list_of_topic_names, 
+                                              listof_topic_descriptions) {
+  prompt_template.adress_concerns <- paste("You are given a negative review of a energy drink product. Given the review and a list of topics you should predict the primary topic the review is complaining about. Only return a specific topic you think is suitable here. Do not provide any explanation, just return the topic name! \n
+  Review: ", review, " \n
+  Topics: ", paste(list_of_topic_names, collapse = ", "), " \n
+  Topic descriptions: ", paste(listof_topic_descriptions, collapse = ", "), " \n")
+  
+  return(prompt_template.adress_concerns)
+}
+
+```
+
+```{r eval=FALSE, include=FALSE}
+# some example review for testing model without inputs
+example_review = data.1p_filtered$review[733]
+print(paste("The example review is:"))
+print(example_review)
+example_review_preprocessed = data.1p_filtered$stemming[733]
+
+template <- create_find_dominant_topic_prompt_without(review = example_review
+                                                      )
+
+# now ask gpt
+print("------")
+print("The answer from gpt is:")
+response <- ask_gpt(template, temperature = 0, max_tokens=5)
+print(response)
+```
+
+```{r eval=FALSE, include=FALSE}
+# some example review for testing
+example_review = data.1p_filtered$review[24]
+print(paste("The example review is:"))
+print(example_review)
+example_review_preprocessed = data.1p_filtered$stemming[24]
+
+template <- create_find_dominant_topic_prompt(review = example_review,
+                                                list_of_topic_names = list_of_topic_names, 
+                                                listof_topic_descriptions = topic_descriptions)
+
+print(template)
+# now ask gpt
+print("------")
+print("The answer from gpt is:")
+response <- ask_gpt(template, few_shot_examples, temperature = 0, max_tokens=5)
+print(response)
+```
+
+
+```{r eval=FALSE, include=FALSE}
+# function that creates a dataframe with a "review", "our_func" and "gpt" column
+# it should take a list of reviews and then create a dataframe with the corresponding predictions and return it
+# the function should also take the topic model, list of topic names and descriptions as input
+predictGPTComparison <- function(list_of_reviews,
+                                 list_of_topic_names,
+                                 listof_topic_descriptions) {
+  # create empty dataframe
+  df <- data.frame(review = character(),
+                   our_func = character(),
+                   gpt = character(),
+                   stringsAsFactors = FALSE)
+  
+  # loop over list of reviews
+  for (i in 1:length(list_of_reviews)) {
+    # get review
+    review <- list_of_reviews[i]
+    
+    # preprocess before
+    # create a corpus from the review
+    suppressWarnings({
+      corpus <- Corpus(VectorSource(review))
+      
+      # apply preprocessing
+      corpus.simple <- simplified_text(corpus)
+      corpus.stem <- apply_stemming(corpus.simple)
+    })
+      
+    # To extract the processed text with stemming
+    review.pre <- sapply(corpus.stem, as.character)
+    
+     # predict the topic using our function
+    predicted_topic <- predict_topic_with_maptpx(review.pre, topic_model_unigram, data.1p_filtered.dtm.uni)
+    name_of_topic <- list_of_topic_names[predicted_topic]
+    
+    # create prompt template
+    template <- create_find_dominant_topic_prompt(review = review,
+                                                  list_of_topic_names = list_of_topic_names, 
+                                                  listof_topic_descriptions = listof_topic_descriptions)
+    
+    # ask gpt
+    gpt <- ask_gpt(template, temperature = 0, max_tokens=5)
+    
+    # add row to dataframe
+    df <- rbind(df, data.frame(review = review,
+                               our_func = name_of_topic,
+                               gpt = gpt,
+                               stringsAsFactors = FALSE))
+    
+  }
+  return(df)
+}
+
+```
+
+```{r include=FALSE}
+# Set the seed for reproducibility
+set.seed(1923912831)
+n <- 40 
+# Randomly sample 'n' indices from the length of data.1p_filtered$review
+random_indices <- sample(length(data.1p_filtered$review), n)
+random_indices
+predictions <- predictGPTComparison(
+    list_of_reviews = data.1p_filtered$review[random_indices],
+    list_of_topic_names = list_of_topic_names,
+    listof_topic_descriptions = topic_descriptions
+)
+```
+
+```{r eval=FALSE, include=FALSE}
+predictions
+```
+
+The following plot shows the comparison of our function and GPTs
+prediction. The darker the color the more often the topic was predicted.
+Assuming our prediction and the one of GPT does not make a difference,
+than the boxes would appear only on the diagonal of the heatmap.
+
+```{r echo=FALSE, fig.align='center', fig.asp=0.7, out.width='70%'}
+# create a heat map from predictions
+# the heat map should show the topic choosen by our function and the topic choosen by gpt
+ggplot(predictions, aes(x = our_func, y = gpt)) +
+  geom_bin2d() +
+  # add colors
+  scale_fill_gradient(low = "lightgrey", high = denary) +
+  labs(title = "Our-function and GPTs predictions of the dominant topic",
+       x = "Our function",
+       y = "GPT-4") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+As we can see in most of the cases GPT predicts the same most dominant
+topic as we did with our own prediction function, since the boxes on the
+diagonal are the most darkest. For example in the cases where we
+predicted the "negative effects" as most dominant topic of the review,
+GPT did the same prediction for every of that reviews. But in some cases
+GPT actually predicts a different topic than we did. For example when we
+predicted the "price-perfomance ratio" as the most dominant topic for
+some reviews GPT instead predicted the "negative effects" or the
+"shipment & packaging" as main concern of the customer. Also when we
+predicted the "overall taste" as the most dominant topic in one case GPT
+instead assigned the negative effects topic to that review instead of
+the taste. In this sample the main difference between our prediction and
+the one of GPT occurs when we predicted "shipment & packaging" as the
+most dominant topic. In 5 cases GPT actually thinks that instead the
+main concern of the reviewer is the "overall taste". Therefore we took a
+look at two examples where this occurred:
+
+Review 1: "One Star Taste Awful!"
+
+In this case GPT seems to be more accurate since the review is not about
+the shipment & packaging in any ways but only refers to the taste as the
+reason for the bad rating. One reason why our prediction failed in this
+case could be that the review is very short (4 words) which seems to be
+a problem for our prediction algorithm since it has to make the decision
+on much less information.
+
+Review 2: "Two Stars This is the worst monster flavor.... But I still
+drink it"
+
+Also in this case GPT seems to be more accurate because again the review
+has nothing to do with the shipment & packaging and again only refers to
+the taste. But as the other example also this review is relatively
+short. One conspicuousness is that in both reviews the term "star"
+appears which could maybe be a driver for our prediction to put it in
+the shipment & packaging category.
+
+All in all we could see that in most cases of this random sample our
+prediction is in line with the one from GPT, but in for some reviews our
+prediction seems to fail and the answer of GPT is more accurate.
+Therefore we would expect that also the answers of GPT without giving
+them the topic of the review could be more accurate and therefore better
+suited.
+
+### Evaluation of the answer quality
+
+Secondly we want to compare answers of the model of task 2.3 to answers
+of GPT without the input of the topic and the topic description.
+Therefore we selected 10 different reviews (we used the same reviews
+that we tested the 5 different prompts from Task 2.3 with and added the
+following index numbers: 333, 45, 299, 483, 101 ) and generated answers
+for both of them. Then we created a poll were we showed 6 people
+(including us 4 and 2 outside raters) the review and both answers and
+asked which one they liked better as answer for the respective review or
+if they are indifferent between those. Then we can derive what the
+majority of our poll participants prefer to get an impression which
+answers are better suited.
+
+Therefore we set up a GPT prompt which has the review as the input and
+the following instructions: "You are an helpful assistant that
+understands the customers needs and gives the customer an answer to
+address his concerns. You are given a negative review of a energy drink
+product. Given the review you should address the concern of the customer
+by finding the main issue they have."You have the following restrictions
+which you must adhere to in any case: - Do no make anything up you don't
+know" - You keep your responses to no more than 500 characters long
+(including whitespace)" - You sign off every message with 'Best regards
+from the customer service team'" - Do not address the reviewer by name,
+just call him "customer"." - Do not make anything up outside of the
+context that is given you!"
+
+```{r include=FALSE}
+# This is the prompt generation if GPT should compose a answer addressing the concerns 
+# of a negative review
+few_shot_examples <- list(
+  list("role" = "user", "content" = "Review: It doesn't work."),
+  list("role" = "assistant", "content" = "Dear customer. I am deeply sory to hear that you are not satisfied with our product. I understand that the product didn't work for you and therefore we are happy to refund you the money. "),
+  list("role" = "user", "content" = "Review: It tastes bad!"),
+  list("role" = "assistant", "content" = "Dear customer. I am deeply sory to hear that you are not satisfied with our product. I understand that the product didn't taste good for you and therefore we are happy to refund you the money.")
+)
+
+create_adress_concerns_prompt_template_no_topic <- function(review) {
+  prompt_template.adress_concerns <- paste("You are an helpful assistant that understands the customers needs"
+    ,"and gives the customer an answer to address his concerns. You are given a negative review of a energy "
+    , "drink product. Given the review you should address the concern of the customer by finding the main issue they have."
+    , "You have the following restrictions which you must adhere to in any case: "
+    , "- Do no make anything up you don't know" 
+    , "- You keep your responses to no more than 400 characters long (including whitespace)"
+    , "- You sign off every message with 'Best regards from the customer service team'"
+    , "- Do not address the reviewer by name, just call him \"customer\". \n" 
+    , "- Do not make anything up outside of the context that is given you!"
+    , "Review: ", review, " \n")
+  
+  return(prompt_template.adress_concerns)
+}
+```
+
+```{r eval=FALSE, include=FALSE}
+# some example review for testing
+example_review = data.1p_filtered$review[6]
+print(paste("The example review is:"))
+print(example_review)
+example_review_preprocessed = data.1p_filtered$stemming[6]
+
+template <- create_adress_concerns_prompt_template_no_topic(review = example_review)
+
+# now ask gpt
+print("------")
+print("The answer from gpt is:")
+response <- ask_gpt(template, temperature = 0.8, max_tokens=500)
+print(response)
+```
+
+```{r eval=FALSE, include=FALSE}
+# some example review for testing with topics
+example_review = data.1p_filtered$review[483]
+print(paste("The example review is:"))
+print(example_review)
+example_review_preprocessed = data.1p_filtered$stemming[483]
+
+# Now we first create a prompt using the template generator
+template2 <- create_adress_concerns_prompt_template_more(review = example_review,
+                                                    topic_name = dominant_topic_by_name,
+                                                    topic_description = dominant_topic_description)
+
+
+
+# now we ask gpt
+print("------")
+print("The answer from gpt is:")
+response <- ask_gpt(template2, temperature = 0, max_tokens=400, verbose=FALSE)
+print(response)
+```
+
+To show that the different prompts lead to different answers we chose
+one example review and generated one answer with giving the input of the
+topic and one without the topic as input.
+
+Example review: "Extremely Hazardaous Please if you love yourself or
+your kids-STAY AWAY.Long term effects of excessive caffeine are well
+known Hypertension,Cardiac arrhythmia,Stroke,Aggressive Behavior and
+DEATH.Only yourself to blame, remember you have read this warning."
+
+Answer with giving the topic:\
+"Dear customer,We're truly sorry to hear about your experience with the
+energy drink. Your health and safety are our top priorities. We take
+concerns about negative effects very seriously. Please reach out to our
+customer service team to discuss this matter further so we can address
+your concerns appropriately.Best regards from the customer service team"
+
+Answer without giving the topic: "Dear customer,We're concerned to hear
+about your experience. Our product is designed to be enjoyed
+responsibly, and we always advise consumers to follow the recommended
+serving size. We take health issues seriously and will pass on your
+feedback to our product safety team for review.Best regards from the
+customer service team"
+
+As you can see the answer without giving the topic is more about the
+product design and the intake recommendation as the prompt with giving
+the topic delivered an answer which is more concerned about the health
+of the reviewer.
+
+After we got the results of the survey we calculated the score for both
+options. We did this by assign 1 point every time a participants chose 1
+of the answers to the prompt with which the answer was generated. In
+case participants stated that they were indifferent between the 2
+answers we assigned a point to both options. So the highest possible
+score for an option is amount of the participants (6) multiplied with 10
+(since we asked every participant for his opinion on 10 different
+reviews) which equals 60. Then we summed up the points for both options
+and compared the score.
+
+In 27 of the 60 cases our participants preferred the answer generated
+with the model without telling it the most dominant topic we found using
+our prediction function. In 18 cases people preferred the answer where
+we gave the model the main topic of the review and in the last 15 cases
+our participants were indifferent between the two answers.
+
+So when we sum up the score for both options the answers without the
+topic as input obtained a result of 43/60 points and the answers with
+telling GPT the topic had a final score of 33/60 points. So we would
+conclude that in most cases the model without giving GPT the topic on
+average generates the better answers. Possible reasons for that may be
+that some reviews have more than issue with the product, but when we
+tell GPT the main topic it only refers to that whether when we do not
+have the topic as input it can reply to more than one issue. Another
+reason could be that the answers when we do not give the topic are more
+specific to the review, because GPT does not have more information to
+base the answer on. And a third reason could be that GPT is better in
+identifying the main concern of the customer, which we already found
+evidence for above.
+
+But also in some cases the model which has the topic & the topic
+description as inputs produces answers which were more appealing to our
+raters than the other model. For example for one review regarding the
+price of the product GPT suggested to "consider bulk purchases". Maybe
+this was a too specific suggestions for our raters or they did not have
+the financial requirements to do big bulk purchases.
+
+# Review Inputs
+We created a small application that allows inputting a custom review. The 
+review is then preprocessed and the outputs of the GPT functions from 2.3 and
+2.4 are returned.
+To start the application just run the RMarkdown code. The application will then
+automatically start in a new window.
+
+We created a small application that allows inputting a custom review.
+The review is then preprocessed and the outputs of the GPT functions
+from 2.3 and 2.4 are returned. To start the application just run the two
+code chunks below. The application will then automatically start in a
+new window.
+
+```{r include=FALSE}
+'
+A function that takes a review, preprocesses it and returns the outputs for 
+the GPT functions from 2.3 and 2.4.
+
+Parameters
+----------
+review: A string containing the review to be processed.
+
+'
+getGPTOutputs <- function(review) {
+  # create a corpus from the review
+  corpus <- Corpus(VectorSource(review))
+  
+  # apply preprocessing
+  corpus.simple <- simplified_text(corpus)
+  corpus.stem <- apply_stemming(corpus.simple)
+  
+  # To extract the processed text with stemming
+  review.pre <- sapply(corpus.stem, as.character)
+  
+  # Now we create the output for the 2.3 GPT function
+  
+  # First we predict the dominant topic using our topic model
+  dominant_topic_index <- predict_topic_with_maptpx(preprocessed_review = review.pre,
+                                                  topic_model = topic_model_unigram,
+                                                  dtm = data.1p_filtered.dtm.uni)
+  dominant_topic_by_name <- list_of_topic_names[dominant_topic_index]
+  print(paste("The dominant topic for the example review is:", dominant_topic_by_name))
+  
+  dominant_topic_description <- topic_descriptions[dominant_topic_index]
+  print(paste("The description of the dominant topic is:", dominant_topic_description))
+  
+  # Now we create a prompt using our template generator
+  template <- create_adress_concerns_prompt_template(review = review,
+                                                      topic_name = dominant_topic_by_name,
+                                                      topic_description = dominant_topic_description)
+  # now we ask gpt
+  print("------")
+  response <- "The following answer is from GPT from 2.3 which includes the most dominant topic in the prompt \n"
+  gpt.2_3 <- ask_gpt(template, temperature = 0.8, max_tokens=500)
+  response <- paste(response, "\n", gpt.2_3, "\n \n")
+  
+  # Now we create the output for the 2.4 GPT function
+  
+  template <- create_adress_concerns_prompt_template_no_topic(review = review)
+  gpt.2_4 <- ask_gpt(template, temperature = 0.8, max_tokens=500)
+  
+  response <- paste(response, "\n", "The following answer is from GPT from 2.4 which does not include any kind of topic information: \n")
+  
+  response <- paste(response, "\n", gpt.2_4)
+  
+  print(response)
+    
+  return(response)
+  
+}
+
+#gpt_output_test <- getGPTOutputs("Some review about how bad the taste is.")
+#gpt_output_test
+
+```
+
+```{r eval=FALSE, include=FALSE}
+install_package_if_required(c("shiny", "shinymaterial"))
+library(shiny)
+library(shinymaterial)
+
+ui <- material_page(
+  title = "GPT Review Answer Application",
+  tags$head(
+    tags$style(HTML("
+      #output_text {
+        white-space: pre-wrap;       
+        white-space: -moz-pre-wrap;  
+        white-space: -pre-wrap;      
+        white-space: -o-pre-wrap;    
+        word-wrap: break-word;       
+      
+        height: 300px;               
+        overflow-y: scroll;          
+      }
+      .center-row, .center-text {
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 80%;             
+        text-align: center;         
+      }
+      .center-card {
+        margin-left: auto;
+        margin-right: auto;
+        width: 80%;                 
+        display: block;             
+      }
+    "))
+  ),
+  tags$h5(class = "center-text", "This simple application takes a review input and asks GPT to address the concerns of the reviewer"),
+  material_row(
+    class = "center-row",  
+    material_column(
+      width = 10,
+      material_text_box(
+        input_id = "review_input",
+        label = "Enter the review here:"
+      ),
+      tags$p("After submitting the review it takes a moment to process your input! (max 1 min) \n Sometimes the application might even crash if there is an issue with reaching the GPT model. If that happens for you just restart the application and try again.")  # Hint text
+    ),
+    material_column(
+      width = 2,
+      material_button(
+        input_id = "submit_button",
+        label = "Submit Review"
+      )
+    )
+  ),
+  material_card(
+    class = "center-card",  
+    title = "GPT Response",
+    verbatimTextOutput("output_text")
+  )
+)
+
+server <- function(input, output) {
+  observeEvent(input$submit_button, {
+    req(input$review_input)  # Require that input is not empty
+
+    gpt_answer <- getGPTOutputs(input$review_input)
+    output$output_text <- renderText({
+      paste("The following review will be used for GPT: \n", input$review_input, "\n",
+            "The answer from GPT is: \n", gpt_answer)
+    })
+  })
+    # Define what happens when the app stops
+  onStop(function() {
+    # Any cleanup code can be placed here
+    message("Shiny app is stopping.")
+  })
+}
+
+shinyApp(ui, server)
+```
