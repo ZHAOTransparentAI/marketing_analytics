@@ -1,0 +1,2083 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={  Problemset 3 - Marketing Analytics },
+  pdfauthor={Julius Korch, Marco Schneider, Stefan Stumpf, Zhaotai Liu },
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{\includegraphics[width=2in,height=\textheight]{../Images/Logo/Logo_KIT.png}
+\vspace{0.2in}\\
+Problemset 3 - Marketing Analytics \vspace{0.1in}}
+\usepackage{etoolbox}
+\makeatletter
+\providecommand{\subtitle}[1]{% add subtitle to \maketitle
+  \apptocmd{\@title}{\par {\large #1 \par}}{}{}
+}
+\makeatother
+\subtitle{Institute of Information Systems and Marketing (IISM)}
+\author{Julius Korch, Marco Schneider, Stefan Stumpf, Zhaotai Liu
+\vspace{1in}}
+\date{Last compiled on December 14, 2023}
+
+\begin{document}
+\maketitle
+
+{
+\setcounter{tocdepth}{2}
+\tableofcontents
+}
+\newpage
+
+\hypertarget{task-1-important-products-features}{%
+\section{Task 1: Important products
+features}\label{task-1-important-products-features}}
+
+\hypertarget{load-the-data}{%
+\subsection{1.1 Load the data}\label{load-the-data}}
+
+The original dataset consisted of 50246 observations. After analyzing
+the dataset, we recognized that every observation had one identical
+duplicate. Therefore, we deleted the duplicates and ended up with 25123
+observations. We did this by checking how many different opinion\_ids
+are present in the dataset which represent one unique review. We found
+out that there are 25123 different opinion\_ids (thus, 25123 unique
+reviews) and the same amount of duplicates (see output below).
+Furthermore, we combined the title and the content of a review into a
+new variable ``review''.
+
+\begin{verbatim}
+## [1] "Amount of unique review_ids:  15283"
+\end{verbatim}
+
+\begin{verbatim}
+## [1] "Amount of unique opinion_ids:  25123"
+\end{verbatim}
+
+\begin{verbatim}
+## [1] "Amount of overall rows in the dataset:  50246"
+\end{verbatim}
+
+\begin{verbatim}
+## [1] "Amount of duplications in the dataset:  25123"
+\end{verbatim}
+
+\hypertarget{text-pre-processing}{%
+\subsection{1.2 Text Pre-processing}\label{text-pre-processing}}
+
+\hypertarget{stopwords-removal}{%
+\subsubsection{Stopwords removal}\label{stopwords-removal}}
+
+Texts contain irrelevant words such as `the', `a', `an', `in', etc,
+which add no value to the analysis. These words must be removed from the
+text before further processing.
+
+This is because we need to determine which terms have an impact on
+Amazon's ratings. Therefore, when performing stopwords removal, we need
+to consider negative words. These words can completely change the
+meaning of a sentence, especially in a review.
+
+As an example of the negative words ending in ``n't'' : ``I love that
+these aren't carbonated I don't drink coffee or soda. I love that these
+aren't carbonated, not too sweet, low in calories, and a good source of
+energy. And buying in bulk is a great value!'' Removing the negative
+word produces the opposite meaning.
+
+Another interesting transitional word is `while' and `only'. Like
+``While this is my favorite Monster Drink and I do love them. The price
+for 24 pack is now insane. You can get 2x packs of 10 for \$28 at
+Target. The price for 24 is simply not cheap enough to warrant buying
+it.'' This is a 2 star review. The ``while'' often plays a pivotal role,
+so it cannot be deleted.
+
+All not deleted negative words are as follows: ``isn't'',``aren't''
+,``wasn't'', ``weren't'' , ``hasn't'', ``haven't'', ``hadn't'',
+``doesn't'', ``don't'' ,``didn't'',``won't'', ``wouldn't'', ``shan't'',
+``shouldn't'', ``can't'', ``cannot'',
+``couldn't'',``mustn't'',``while'',``no'' ,``nor''.
+
+We also need to add some stop words, such as the names of the brands,
+like `red', `bull', `monster', `celsius'. Because these words are not
+relevant to our analysis. If we don't delete them, they will reduce the
+interpretability of the lasso regression results, which are not
+representative of the true characteristics of the product.
+
+\hypertarget{simplification}{%
+\subsubsection{Simplification}\label{simplification}}
+
+Looking through the comments, the main capitalization is due to the
+placement at the beginning of the sentence, proper nouns such as brand
+names, and the personal pronoun ``I''. We have reason to believe that
+changing to lowercase will not affect the meaning of the sentence, so we
+change all the text to lowercase.
+
+The main punctuation marks are commas'',``, periods''.'' and a few
+exclamation marks''!``or''!!'' to emphasize emotion, but removing them
+will not have a significant effect.
+
+Actually, the number information mainly emphasizes discount intensity,
+product specifications and often even includes star information such as
+``1 star'' and ``3 stars''.It seems like deleting such information we
+will lose a fraction of valuable information.
+
+However,if we remove all numbers we could say that numbers are mainly in
+the reviews to mention again the star rating, the price or package size.
+We think that it is not that important because the star rating is given
+by the column ``rating'' either way, the opinion about the price is
+expressed in words (e.g.~too expensive) and hence, the precise number is
+not that important and the opinion about the packaging/size is also
+expressed through words (e.g.~good/bad), the number is here not too
+important. Thus, we remove all numbers. And since there are no numbers
+anymore, it is also not important to keep some punctuation in the text.
+So, we can remove all punctuation.
+
+Furthermore, we delete whitespaces from the reviews by using
+stripWhitespace and special punctuation such as bullets (•). Removing
+them can reduce noise in the data, making text data cleaner and more
+consistent, thereby improving the accuracy of analysis.
+
+\hypertarget{stemming}{%
+\subsubsection{Stemming}\label{stemming}}
+
+Stemming reduces the number of vocabulary variants by removing word
+suffixes, such as removing all ``ing'' (form ``packaging'' to
+``packag'') and ``ed'' (``ordered'' to ``order'') forms, thus reducing
+the dimension of the vocabulary.
+
+Fortunately, some suffixes with negative connotations, such as less
+(``useless'' keeps as ``useless''), were retained. In this large text
+sample, stemming can speed up processing and make the algorithm run more
+efficiently.
+
+\hypertarget{tokenization}{%
+\subsubsection{Tokenization}\label{tokenization}}
+
+Tokenization is the process of splitting a string into a list of
+substrings called tokens. It is essential because it helps to prepare
+the raw reviews for further analysis, such as topic modelling. In this
+case, we split the text into unigrams and bigrams. Unigrams are single
+words that can reveal the importance of certain keywords, such as
+specific ingredients or flavours. Bigrams are two words that often occur
+together in the document and can capture the meaning of certain
+contexts, such as `good quality' or `good value', which provide a better
+understanding of whether terms are positively or negatively associated.
+There are also N-grams, which are particularly relevant for languages
+such as English, where we mark negation by placing the negation directly
+in front of the word it modifies. For example, a unigram would just
+capture (good), but a bigram can capture (not, good). Trigrams are also
+useful for catching the occasional double negative, such as `it wasn't
+not good' to (nt, not, good).
+
+However, by looking at two word clouds, we found that unigrams have an
+irreplaceable advantage in that they can represent most of the core
+features. Whether it is `tast(e)', `price' and other words that
+represent product features, they can be clearly understood. However, the
+word cloud of bigrams is mixed with a large number of adjectives such as
+``great'', and the essential characteristics of the product cannot be
+clearly seen: although there are still ``great tast(e)'', ``tast(e)
+good'' and the like, either their frequency or their representativeness
+has been greatly reduced. This is the reason why we choose unigrams for
+the following lasso regression and topic modelling.
+
+\begin{verbatim}
+## Warning in tm_map.SimpleCorpus(corpus_stemmed,
+## content_transformer(tokenize_uni)): transformation drops documents
+\end{verbatim}
+
+\includegraphics{Problem_set_3_files/figure-latex/unnamed-chunk-9-1.pdf}
+
+\begin{verbatim}
+## Warning in tm_map.SimpleCorpus(corpus_stemmed,
+## content_transformer(tokenize_bi)): transformation drops documents
+\end{verbatim}
+
+\begin{verbatim}
+## Warning in wordcloud(corpus_token_bi, min.freq = 300, random.order = FALSE, :
+## five_star could not be fit on page. It will not be plotted.
+\end{verbatim}
+
+\includegraphics{Problem_set_3_files/figure-latex/unnamed-chunk-10-1.pdf}
+
+\#\#1.3 Choose appropriate products
+
+Our main criterion to choose the products we want to analyze are the
+number of reviews for the products. For running the analysis we want
+products with a high number of reviews. If we choose the products with
+little observations, we may not have enough data to do the analysis. As
+the number of reviews for products is not in the same order of magnitude
+as the number of reviews for other products, comparisons between
+products lack statistical significance. Thus, we first sorted products
+out which have less than 500 reviews.
+
+\begin{verbatim}
+## # A tibble: 16 x 2
+##    produktname                                      n
+##    <chr>                                        <int>
+##  1 5-hour Energy                                 2385
+##  2 V8 +Energy                                    2259
+##  3 Celsius Healthy Sugar Free                    1580
+##  4 Red Bull Energy Drink                         1443
+##  5 Monster Absolutely Zero                       1332
+##  6 Monster Zero Ultra Energy Drink               1309
+##  7 Red Bull Sugarfree                            1236
+##  8 Monster Lo-Carb Energy Drink                  1177
+##  9 Monster Assault                               1036
+## 10 Monster Khaos (Juice)                         1007
+## 11 Red Bull Blue Edition                          862
+## 12 Red Bull Yellow Edition                        831
+## 13 Red Bull Red Edition                           816
+## 14 Red Bull Total Zero                            783
+## 15 Red Bull Orange Edition                        759
+## 16 Java Monster (Coffee) Loca Moca Energy Drink   578
+\end{verbatim}
+
+\includegraphics{Problem_set_3_files/figure-latex/unnamed-chunk-12-1.pdf}
+
+Interesting for us would be to see the proportion of verified reviews. A
+review is verified if the customer directly bought the product on
+Amazon. Thus, it is preferable to conduct the analysis on products with
+only verified reviews because this would guarantee a higher quality of
+the reviews since people actually bought the product and evaluate it
+afterwards. However in the table below, we can see that except for ``V8
++Energy'' the proportion of verified reviews is quite low. Thus, we
+cannot conduct the analysis only based on verified reviews.
+
+\begin{verbatim}
+## # A tibble: 16 x 4
+##    produktname                                      n n_ver prop_ver
+##    <chr>                                        <int> <int>    <dbl>
+##  1 5-hour Energy                                 2385  1823    0.764
+##  2 Celsius Healthy Sugar Free                    1580  1353    0.856
+##  3 Monster Absolutely Zero                       1332  1131    0.849
+##  4 Red Bull Energy Drink                         1443  1119    0.775
+##  5 Monster Zero Ultra Energy Drink               1309  1090    0.833
+##  6 Red Bull Sugarfree                            1236  1043    0.844
+##  7 Monster Lo-Carb Energy Drink                  1177   972    0.826
+##  8 Monster Assault                               1036   891    0.860
+##  9 Monster Khaos (Juice)                         1007   859    0.853
+## 10 Red Bull Blue Edition                          862   730    0.847
+## 11 Red Bull Red Edition                           816   708    0.868
+## 12 Red Bull Yellow Edition                        831   706    0.850
+## 13 Red Bull Total Zero                            783   695    0.888
+## 14 Red Bull Orange Edition                        759   675    0.889
+## 15 V8 +Energy                                    2259   510    0.226
+## 16 Java Monster (Coffee) Loca Moca Energy Drink   578   471    0.815
+\end{verbatim}
+
+\includegraphics{Problem_set_3_files/figure-latex/unnamed-chunk-14-1.pdf}
+
+\hypertarget{explanation-for-choosing-the-first-five-products}{%
+\paragraph{Explanation for choosing the first five
+products}\label{explanation-for-choosing-the-first-five-products}}
+
+Within the 10 most reviewed products, there are 5 different kinds of
+Monster and 3 different Red Bull energy drinks. Since on Amazon one can
+write one review for example for a bundle of different Monster energy
+drinks which occurs for all the energy drinks of the bundle, we decided
+to analyse how many reviews are the same in those 7 products most
+reviewed products. If a lot of reviews are the same within those
+products, we should not take them all for the analysis.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Create a dataset with only verified purchases}
+\NormalTok{data\_ver }\OtherTok{\textless{}{-}}\NormalTok{ filtered\_data }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(verified\_purchase }\SpecialCharTok{==} \StringTok{"true"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "The amount of reviews for product 5-hour Energy is: 1823"
+## [1] "The amount of reviews for product Celsius Healthy Sugar Free is: 1353"
+## [1] "The amount of reviews for product Monster Absolutely Zero is: 1131"
+## [1] "The amount of reviews for product Red Bull Energy Drink is: 1119"
+## [1] "The amount of reviews for product V8 +Energy is: 510"
+## [1] "Matrix of common reviews:"
+##                            5-hour Energy Celsius Healthy Sugar Free
+## 5-hour Energy                         NA                         20
+## Celsius Healthy Sugar Free            20                         NA
+## Monster Absolutely Zero               25                         15
+## Red Bull Energy Drink                 23                         21
+## V8 +Energy                            11                          7
+##                            Monster Absolutely Zero Red Bull Energy Drink
+## 5-hour Energy                                   25                    23
+## Celsius Healthy Sugar Free                      15                    21
+## Monster Absolutely Zero                         NA                    23
+## Red Bull Energy Drink                           23                    NA
+## V8 +Energy                                      12                    13
+##                            V8 +Energy
+## 5-hour Energy                      11
+## Celsius Healthy Sugar Free          7
+## Monster Absolutely Zero            12
+## Red Bull Energy Drink              13
+## V8 +Energy                         NA
+\end{verbatim}
+
+\includegraphics{Problem_set_3_files/figure-latex/unnamed-chunk-20-1.pdf}
+
+\begin{verbatim}
+## [1] "The amount of reviews for product Monster Absolutely Zero is: 1131"
+## [1] "The amount of reviews for product Monster Zero Ultra Energy Drink is: 1090"
+## [1] "The amount of reviews for product Monster Lo-Carb Energy Drink is: 972"
+## [1] "The amount of reviews for product Monster Assault is: 891"
+## [1] "The amount of reviews for product Monster Khaos (Juice) is: 859"
+## [1] "The amount of reviews for product Red Bull Sugarfree is: 1043"
+## [1] "The amount of reviews for product Red Bull Energy Drink is: 1119"
+## [1] "The amount of reviews for product Red Bull Blue Edition is: 730"
+## [1] "Matrix of common reviews:"
+##                                 Monster Absolutely Zero
+## Monster Absolutely Zero                              NA
+## Monster Zero Ultra Energy Drink                     819
+## Monster Lo-Carb Energy Drink                        938
+## Monster Assault                                     855
+## Monster Khaos (Juice)                               816
+## Red Bull Sugarfree                                   19
+## Red Bull Energy Drink                                23
+## Red Bull Blue Edition                                13
+##                                 Monster Zero Ultra Energy Drink
+## Monster Absolutely Zero                                     819
+## Monster Zero Ultra Energy Drink                              NA
+## Monster Lo-Carb Energy Drink                                819
+## Monster Assault                                             817
+## Monster Khaos (Juice)                                       817
+## Red Bull Sugarfree                                           19
+## Red Bull Energy Drink                                        25
+## Red Bull Blue Edition                                        16
+##                                 Monster Lo-Carb Energy Drink Monster Assault
+## Monster Absolutely Zero                                  938             855
+## Monster Zero Ultra Energy Drink                          819             817
+## Monster Lo-Carb Energy Drink                              NA             863
+## Monster Assault                                          863              NA
+## Monster Khaos (Juice)                                    817             815
+## Red Bull Sugarfree                                        19              18
+## Red Bull Energy Drink                                     24              23
+## Red Bull Blue Edition                                     14              14
+##                                 Monster Khaos (Juice) Red Bull Sugarfree
+## Monster Absolutely Zero                           816                 19
+## Monster Zero Ultra Energy Drink                   817                 19
+## Monster Lo-Carb Energy Drink                      817                 19
+## Monster Assault                                   815                 18
+## Monster Khaos (Juice)                              NA                 17
+## Red Bull Sugarfree                                 17                 NA
+## Red Bull Energy Drink                              22                939
+## Red Bull Blue Edition                              14                659
+##                                 Red Bull Energy Drink Red Bull Blue Edition
+## Monster Absolutely Zero                            23                    13
+## Monster Zero Ultra Energy Drink                    25                    16
+## Monster Lo-Carb Energy Drink                       24                    14
+## Monster Assault                                    23                    14
+## Monster Khaos (Juice)                              22                    14
+## Red Bull Sugarfree                                939                   659
+## Red Bull Energy Drink                              NA                   661
+## Red Bull Blue Edition                             661                    NA
+\end{verbatim}
+
+\includegraphics{Problem_set_3_files/figure-latex/unnamed-chunk-22-1.pdf}
+
+By looking at the table and the heatmap above, we can see that there are
+a lot of common reviews between the Monster energy drinks as well as
+between the Red Bull energy drinks. Therefore, we decided to only take
+one of each for the analysis. We chose to take the ``Monster Absolutely
+Zero'' and the ``Red Bull Energy Drink'' since they are the most
+reviewed products of their brand. In total, we chose to analyse the
+products with the in total most reviews, namely ``Monster Absolutely
+Zero'', ``Red Bull Energy Drink'', ``5-hour Energy'', ``Celsius Healthy
+Sugar Free'' and ``V8 +Energy''. As seen in the heatmap below, the
+number of common reviews between those products is very low.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Example call to the function with a list of products}
+\NormalTok{product\_list }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\StringTok{"Red Bull Energy Drink"}\NormalTok{, }\StringTok{"Monster Absolutely Zero"}\NormalTok{, }\StringTok{"5{-}hour Energy"}\NormalTok{, }\StringTok{"Celsius Healthy Sugar Free"}\NormalTok{, }\StringTok{"V8 +Energy"}\NormalTok{)}
+
+\NormalTok{common\_reviews\_matrix }\OtherTok{\textless{}{-}} \FunctionTok{amountof\_dubs\_in\_product\_list}\NormalTok{(product\_list, data\_ver)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "The amount of reviews for product Red Bull Energy Drink is: 1119"
+## [1] "The amount of reviews for product Monster Absolutely Zero is: 1131"
+## [1] "The amount of reviews for product 5-hour Energy is: 1823"
+## [1] "The amount of reviews for product Celsius Healthy Sugar Free is: 1353"
+## [1] "The amount of reviews for product V8 +Energy is: 510"
+## [1] "Matrix of common reviews:"
+##                            Red Bull Energy Drink Monster Absolutely Zero
+## Red Bull Energy Drink                         NA                      23
+## Monster Absolutely Zero                       23                      NA
+## 5-hour Energy                                 23                      25
+## Celsius Healthy Sugar Free                    21                      15
+## V8 +Energy                                    13                      12
+##                            5-hour Energy Celsius Healthy Sugar Free V8 +Energy
+## Red Bull Energy Drink                 23                         21         13
+## Monster Absolutely Zero               25                         15         12
+## 5-hour Energy                         NA                         20         11
+## Celsius Healthy Sugar Free            20                         NA          7
+## V8 +Energy                            11                          7         NA
+\end{verbatim}
+
+We choose the first five products with the most observations. The reason
+is that we want to have enough data for each product to do the analysis.
+If we choose the products with less observations, we may not have enough
+data to do the analysis. As the number of reviews for other products is
+not in the same order of magnitude as the number of reviews for other
+products, comparisons between products lack statistical significance.
+
+\includegraphics{Problem_set_3_files/figure-latex/unnamed-chunk-24-1.pdf}
+
+\begin{verbatim}
+## [1] "Red Bull Energy Drink"      "Monster Absolutely Zero"   
+## [3] "5-hour Energy"              "Celsius Healthy Sugar Free"
+## [5] "V8 +Energy"
+\end{verbatim}
+
+\begin{verbatim}
+## [1] 8999
+\end{verbatim}
+
+To select the 5 products we want, we first consider the frequency of
+reviews, as a large number of reviews are needed for modelling.
+Secondly, we found that there is a significant proportion of unverified
+reviews, in particular, ``V8+Energy Drink'' is the product with the most
+unverified purchases (1749). The proportion of unverified purchases is
+0.7742364. Third, we found that there is a lot of duplication in reviews
+of similar brands, which, as analysed above, is caused by reviewing a
+bundle of similar products together. However, we found that there was
+very little duplication between different products, so using products
+from different brands to combine products is a wise choice.
+
+To summarise, we selected the products from different well-known brands
+with the largest number of verified reviews. The results are:``Red Bull
+Energy Drink'', ``Monster Absolutely Zero'', ``5-hour Energy'',
+``Celsius Healthy Sugar Free'', ``V8 +Energy''
+
+\hypertarget{lasso-regression-for-the-5-products}{%
+\subsection{Lasso Regression for the 5
+Products}\label{lasso-regression-for-the-5-products}}
+
+\textbf{Previous Information about the Lasso Regression:}\\
+
+\textbf{1.} In general, we want to find out what aspects of the reviews
+have a relatively large effect on the Amazon star ratings. This is
+challenging since there is a very high dimensionality of the word count
+data. For finding influential aspects, we apply the lasso regression
+because through conducting it, some coefficients of terms are exactly
+zero and thus, can be excluded from the analysis. Here, only a few
+variables/terms have an effect and small effects on the ratings are
+constrained to 0. In our analysis we chose the lasso regression which
+identifies the best model on regularization path with information
+criterion (AICc) and not with cross-validation. This simply has the
+reason that we compared the results of both versions and the results
+were very similar. Thus, we chose the AICc-regularization path because
+it has a higher computational efficiency. With this method, the optimal
+lambda for the model is identified based on the AICc.\\
+\textbf{2.} We considered the possibility of an adjustment of word
+counts for document length but decided to not implement it to our
+analysis. The reason for this is that the document size is not varying
+too much. 75 \% of all reviews are smaller or equal to 338 characters.
+Even though the standard deviation of the review length is 335
+characters, we do not adjust the word counts for document length because
+we have heavy outliers (some have over 4000 characters) which
+disproportionately contribute to the variation.\\
+\textbf{3.} In the text, we do not always want to refer to the
+coefficients, this is why we here want to once draw attention to the
+fact that not all presented terms have the same influence on the Amazon
+star ratings. Terms with higher coefficients drive the ratings more than
+terms with lower coefficients. One can see the exact coefficients in the
+printed outputs and can also see which terms are more or less
+important.\\
+\textbf{4.} Not all the words outputted by the lasso regression can be
+used for the task. We have therefore selected the most appropriate words
+for the task, placed their meaning in the context of the dataset and
+interpreted them. Exemplary, by analyzing the output of the lasso
+regression for ``Red Bull Energy Drink'' we concluded that the term
+``anyon'' which stands for anyone is not helpful in this case. This has
+the reason that by looking through the reviews we recognized that anyone
+is used in a lot different meanings. In ``Would recommend to anyone!''
+the term is used to show that the customer would always recommend the
+product, but in ``Why would anyone in their right mind pay \$10 more?''
+the term is used to signalize that the price is too high. Since the
+meanings of the sentences in which this term occurs differs a lot, we
+decided to do not include such terms. A second example would be
+``carri''. In reviews this term is used to signalize that when buying
+online, people do not have to carry it home from the supermarket or that
+a store does not carry it (is not in the sortiment) or that though the
+packaging of the cans they are easy to carry. We cannot conclude one
+clear meaning for this term and thus excluded it from our further
+analysis for ``Red Bull Energy Drink''.
+
+First we ran the lasso regression for \textbf{``Red Bull Energy
+Drink''}:
+
+The Amazon star rating here was positively driven by the compared to
+other drinks little chemical taste and chemical composition (``chem'').
+Interesting is that often mothers are highly satisfied customers of this
+energy drink (``mom''). Customers appreciated the secure and good
+packaging (``secur'' \& ``wrap''). People who were satisfied with the
+product said it was packed in a way that the cans were secure and
+properly wrapped by additional material. Furthermore it is interesting
+that satisfied customers mentioned that they bought it in a count,
+e.g.~as a 4-pack or 6-pack (``count''). This is a good indicator that
+satisfied customers buy buy more than a single can to have several cans
+at home. Interestingly, satisfied customers mentioned that it is a good
+mixer for alcohol (``mixer''). That makes us think that this product is
+maybe used a lot at parties. Positive ratings sometimes compared this
+product from Amazon with the product from the supermarket (``retail'').
+Since the ratings were positively driven by this term, we expect that
+buying Red Bull on Amazon has some advantages for the customers,
+e.g.~more convenience (no carrying of heavy cans) or a cheaper
+price/bigger discounts. Also, a lot of customers seemed to like the
+taste of this energy drink (``nectar''). They compared it to the taste
+of nectar which usually stands for a sweet and tasty liquid.
+
+Reviews which rated the Red Bull Energy Drink low were driven by the
+fact that people called it a waste of money (``wast''). Fitting to this,
+reviewers mentioned that the price of the product is too high
+(``expens'') and that similar products (other energy drinks) are rated
+higher by those people (``similar''). We conclude this from the fact
+that the coefficient for this term is negative and thus, when comparing
+Red Bull to other drinks, it influences the rating negatively.
+Interesting is that also negative reviews were driven by the taste.
+People called the taste horrible, terrible, flat and nasty
+(``horrible'', ``terrible'', ``flat'' \& ``nasti''). Negative reviews
+also contained that the cans or package arrived damaged, empty and
+sticky because cans were bust open (``sticki'', empti'', ``bust'' \&
+``punctur''). As last point, people mentioned that the consume of this
+product is unhealthy (``healthi'') and the contained aspartame
+(artificial sweetener) is bad for peoples' health (``aspartam''). \small
+
+\begin{verbatim}
+## [1] "Highest coefficients driving star rating before cv:"
+##     chemic       five      anyon      secur        mom      carri     anyway 
+##  1.0468004  0.9581927  0.5603056  0.5378977  0.5294065  0.4376122  0.4076530 
+##    mention       rock       part      count discontinu       none      worri 
+##  0.3954448  0.3930949  0.3849020  0.3521959  0.3510466  0.3361876  0.3256367 
+##      cours        cut      mixer       wrap     retail       show      clean 
+##  0.3213976  0.3134277  0.2959396  0.2908753  0.2901849  0.2763010  0.2660576 
+##       care      exact      total     nectar 
+##  0.2572354  0.2431027  0.2300788  0.2297295 
+## 
+## [1] "Highest coefficients lowering star rating before cv:"
+##       wast     sticki    similar    horribl      empti    healthi       bust 
+## -1.4412412 -1.4296495 -1.4258667 -1.3119123 -1.0843280 -1.0369363 -0.9425446 
+##     togeth    terribl    punctur       flat disappoint       miss   aspartam 
+## -0.9393488 -0.9049180 -0.9021248 -0.8755844 -0.8685557 -0.7736052 -0.7225525 
+##       call       warn      other      upset      nasti     switch       star 
+## -0.7040889 -0.7013290 -0.6489476 -0.6353541 -0.6298740 -0.6257993 -0.5967297 
+##     expens        con     liquid   consumpt       drop 
+## -0.5666932 -0.5642033 -0.5481000 -0.5393788 -0.5359309
+\end{verbatim}
+
+\normalsize
+
+Lasso regression for \textbf{Monster Absolutely Zero}:
+
+Here, the Amazon star rating is positively driven the fact that
+customers report that they were generally impressed (``impress'') and
+especially about the delicious taste (``delici'', ``decent'') which is
+not too sweet compared to other energy drinks (``sweet''). By comparing
+the product on Amazon to the product in supermarkets (``retail'') we
+conclude that people prefer to buy it online than offline. Although, we
+do not know the specific reason for this, it might be because the
+package of cans arrived undamaged (``undamag'', ``none'') and the
+products were in good shape after deliver or that it is hard to find in
+normal supermarkets (``hard''), but could also be due to convenience or
+a cheaper price. Interestingly, people who attend to classes seemed to
+like the product a lot (``class''). This counts for both teachers and
+pupils/students. This fits to the fact that people report to consume it
+on a daily basis (``daili''). Positive reviews also say that this drink
+energizes a lot after consuming it (``kick'') and customers were
+positively influenced by the good can sizes Monster offers (``ounc'').
+
+The star rating of ``Monster Absolutely Zero'' is mainly negatively
+driven by people warning potential customers of this product
+(``beware''). Customers report that it is wasting time trying the drink
+and also a waste of money (``wast''). This matches the complaints about
+the price increase (``increas'') and the call for lower prices
+(``cheap''). The rating is also negatively influenced by the packaging.
+Customers report that the cans arrived wet, sticky, broken, exploded,
+shaken (``wet'', ``sticki'', ``broken'', ``explod'', ``shaken'') and
+poorly packaged/shipped (``poor''). Furthermore the flat taste of the
+drink motivated users to rate the product low (``flat''). Some customers
+even summarized their experience with this product as horrible
+(``horribl''). \small
+
+\begin{verbatim}
+## [1] "Highest coefficients driving star rating before cv:"
+##       five    impress     togeth understand     retail      along     honest 
+##  1.1495737  0.6818589  0.6114958  0.5892436  0.5817450  0.5027094  0.4063328 
+##      class     delici       none      sweet    undamag        tax      anyth 
+##  0.3637415  0.3580851  0.3225517  0.3175499  0.2899676  0.2843970  0.2798248 
+##       lead       ounc       coke       hard     decent      daili       kick 
+##  0.2741348  0.2663188  0.2593314  0.2563559  0.2304410  0.2272658  0.2190875 
+##      worri      great     amazon      lower 
+##  0.2060184  0.1987347  0.1980917  0.1967343 
+## 
+## [1] "Highest coefficients lowering star rating before cv:"
+##      bewar      anyon     bother       wast        wet    increas     sticki 
+## -1.6540874 -1.5496048 -1.3610559 -1.3341933 -1.3079027 -1.1016908 -0.9668536 
+##       poor      stand     consid     shaken     broken      clear      purpl 
+## -0.9466734 -0.8962975 -0.8400873 -0.8296600 -0.8255177 -0.7814204 -0.7593061 
+##       star    suggest      cheap     explod        fan  everywher       flat 
+## -0.6522891 -0.6307269 -0.6243997 -0.6081437 -0.5889217 -0.5600841 -0.5395399 
+##        tea     health    horribl      bring     receiv 
+## -0.5394075 -0.5321800 -0.5201857 -0.5183571 -0.4953560
+\end{verbatim}
+
+\normalsize
+
+Lasso regression for \textbf{5-hour Energy}:
+
+The star rating of ``5-hour Energy'' is positively driven by people who
+consume it when they are on holidays (``holiday''). Also the effect of
+this drink seems to satisfy the customers. It is reported that consumers
+do not experience spikes (``spike'') which means that there are no
+extraordinary high peaks and following crashes in the energy level.
+Customers report that this is a life saving energy supply for them
+(``lifesav''). Furthermore, it seems to have a good effect on the
+metabolism (``metabol'') and people report that it works well for
+diabetics (``diabet''), since it contains no sugar (``sugar''). Positive
+influence on the star rating also has the fact that people like to
+consume it ice cold (``ice'') as a snack (``snack''). The size of the
+bottle is also a positive factor (``pocket''). Furthermore, when
+comparing to previous experiences, reviewers are glad that they
+discovered this product (``glad'') and switched to ``5-hour Energy''
+(``switch'').
+
+The star rating of ``5-hour Energy'' is negatively driven by people
+reporting that they dislike the taste (``yuck'', ``terribl'' \&
+``gross''). The rating is also driven by the reported after effects of
+this product (``terribl''). Customers mentioned that they had different
+kinds of attacks, e.g.~heart or panic attack, (``attack''), felt dizzy
+(``dizzi'', had unpleasant skin feelings (``skin'') and needed to go to
+the hospital because of the effects of ``5-hour Energy'' (``hospit'').
+Negative ratings are also driven by the fact that people report that the
+cans leaked into the box (``leak'') and that the product is a waste of
+money and time (``wast''). \small
+
+\begin{verbatim}
+## [1] "Highest coefficients driving star rating before cv:"
+##      five   holiday    mistak     crack     spike   lifesav     radio    diabet 
+## 0.6971557 0.6631857 0.6285934 0.5728979 0.5304309 0.4946877 0.4883695 0.4616967 
+##      user      room     light    specif       ice     snack   metabol    pocket 
+## 0.4613392 0.4296551 0.4295000 0.3979300 0.3853926 0.3775572 0.3558731 0.3504245 
+##      hurt      glad    switch       etc      most       nor     sugar       urg 
+## 0.3481602 0.3389377 0.3178940 0.3152601 0.3141073 0.3031269 0.2916822 0.2893744 
+##    shower 
+## 0.2683556 
+## 
+## [1] "Highest coefficients lowering star rating before cv:"
+##     welcom       yuck       wast       leak     attack      damag    terribl 
+## -1.6753245 -1.4307838 -1.3152776 -1.2753331 -1.0651115 -1.0048499 -0.9892929 
+##   unfortun      manag      dizzi       miss       skin    comment      chore 
+## -0.9258735 -0.8671707 -0.8602280 -0.8540720 -0.8119984 -0.8103434 -0.7898875 
+##       crap  healthier     hospit       pour disappoint        dew     beyond 
+## -0.7892886 -0.7083094 -0.6859693 -0.6791183 -0.6647612 -0.6557908 -0.6495166 
+##      gross    ridicul    potenti        rip       mean 
+## -0.6317571 -0.6135881 -0.6046327 -0.5970814 -0.5933235
+\end{verbatim}
+
+\normalsize
+
+Lasso regression for \textbf{Celsius Healthy Sugar Free}:
+
+The star rating of ``Celsius Healthy Sugar Free'' is positively driven
+by people reporting that this drink did not make them feel ill
+(``ill''). Also comparing the drink to similar Rockstar energy drinks
+has a positive influence on the Amazon star rating (``rock''). We
+conclude that customers of this drink like it more than Rockstar drinks.
+Customers also like that the product is low carb (``carb'') and has only
+ten calories per serving (``ten''). This matches the fact that the fact
+that the drink contains niacian which is a vitamin that helps to convert
+food into energy (``niacin'') and that it has a high amount of minerals
+(``miner''). Furthermore, customers appreciate the power this drink
+gives them (``power'') and that it lights up their mood (``mood'').
+``Celsius Healthy Sugar Free'' also seems to be a good drink for
+training (``train'').
+
+The star rating of ``Celsius Healthy Sugar Free'' is negatively driven
+by people reporting that this is the worst energy drink they tried
+(``worst''). The rating is also negatively driven by the fact that
+people report that the drink causes breathlessness (``breath''), makes
+them feel nauseous (``nauseous'') and that they dislike the taste
+(``disgust'', ``flat'', ``yuck'', ``nasti'', ``horribl'', ``terribl'').
+Furthermore, customers report that the cans or the order arrived damaged
+(``damag'') and that they do not like that the drink contains guarana
+(``guarana''). Additionally, the changed formula of the drink drives bad
+ratings (``formula''). \small
+
+\begin{verbatim}
+## [1] "Highest coefficients driving star rating before cv:"
+##      five    werent    moment    discov    origin       aid     final      four 
+## 1.7984518 1.5933859 1.5358013 1.5094537 1.4057945 1.1980444 0.8510636 0.8271253 
+##       ill      rock      harm       saw     often      carb       ten    anyway 
+## 0.8243193 0.8174357 0.8027040 0.7867407 0.6651165 0.6397826 0.6279072 0.5946668 
+##    niacin   multipl    despit     relat     power     miner      mood     train 
+## 0.5861828 0.5761883 0.5585238 0.5569708 0.5212190 0.5157719 0.4992530 0.4902638 
+##     twice 
+## 0.4753469 
+## 
+## [1] "Highest coefficients lowering star rating before cv:"
+##       call      worst      wrong     breath   nauseous       star    disgust 
+## -1.5728316 -1.5358259 -1.3074595 -1.3026658 -1.2078596 -1.1259006 -1.1138126 
+##        nor     simpli      liter       flat      write       yuck      damag 
+## -1.0997508 -1.0870839 -1.0283868 -0.9689879 -0.9349415 -0.9057736 -0.8858813 
+##       mine    somehow    guarana     factor      blood      nasti    horribl 
+## -0.8473947 -0.7857683 -0.7766045 -0.7459804 -0.7219806 -0.7109837 -0.6954262 
+##       wise    formula    terribl     imagin      break 
+## -0.6910336 -0.6812415 -0.6670565 -0.6667260 -0.6478573
+\end{verbatim}
+
+\normalsize
+
+Lasso regression for \textbf{V8 +Energy}:
+
+The star rating of ``V8 +Energy'' is positively driven by the fact that
+customers had concerns about consuming this product but this concerns
+dissolver after trying it (``concern''). This matches with the point
+that customers reported a surprisingly good experience (``surpis'').
+Customer who commute to work seem to like this drink a lot since this
+drives positive ratings (``commut''). Also on roadtrips this product
+seems to be a good choice (``trip''). Furthermore, customers like the
+taste (``excel'',``amaz'',``delici'', ``great'', ``best'' \& ``awesom'')
+and the fact that the drink does not cause crash in the energy level
+when the effect wears off (``wear''). This goes well with the
+observation that customers appreciate that ``V8 +Energy'' does not have
+an unpleasantly heavy effect (``jump''). A last point which positively
+drives the Amazon star rating is that customer like this online-offer
+because the product is often not on stock in supermarkets and that the
+customers would like to have a stock of the product at home (``stock'').
+
+Interestingly, the star rating of ``V8 +Energy'' is especially
+negatively driven by the taste of the product. This is contrary to the
+observations on drivers for positive ratings. Customers report a bland,
+funny, unnatural, nasty, fake, disgusting and terrible (after)taste
+(``bland'', ``funni'', ``unnatur'', ``nasti'', ``fake'', ``disgust'' \&
+``terribl''). This matches with the reports that the drink leaves a bad
+feeling/taste in the mouth (``mouth''). Furthermore, customers report
+that the description of the product on Amazon is misleading since it
+does not say that the drink is sweetened with sucralose (``descript'')
+what fits with the negative influence on the rating that the drink is
+sweetened with sucralose (``sucralos''). \small
+
+\begin{verbatim}
+## [1] "Highest coefficients driving star rating before cv:"
+##      five   concern     fiber    commut    requir    doctor     excel       car 
+## 0.7274066 0.4605163 0.3566331 0.2994202 0.2939708 0.2334577 0.2289259 0.2151558 
+##      amaz     stock      trip     often   surpris      best      wear    awesom 
+## 0.2142237 0.2129163 0.2004685 0.1897019 0.1735426 0.1583167 0.1556308 0.1459675 
+##    delici     great      case      love   favorit      jump     happi    depend 
+## 0.1389035 0.1357887 0.1337023 0.1288184 0.1250620 0.1198120 0.1182568 0.1129904 
+##   perfect 
+## 0.1075998 
+## 
+## [1] "Highest coefficients lowering star rating before cv:"
+##           dump            sad           view          bland          blood 
+##     -1.2182354     -1.2147701     -0.8403898     -0.7332064     -0.6761474 
+## orangepineappl          stick       unfortun         compon          funni 
+##     -0.6270807     -0.6241842     -0.5924968     -0.5704785     -0.5092566 
+##        unnatur       descript          nasti           fake     disappoint 
+##     -0.4604078     -0.4533168     -0.4408921     -0.4381605     -0.4235848 
+##           thin        disgust      experienc        terribl          child 
+##     -0.4222737     -0.4149960     -0.4013393     -0.3664456     -0.3549831 
+##           awar         whenev          mouth         depart           tall 
+##     -0.3540916     -0.3441193     -0.3237872     -0.3212426     -0.3200244 
+##       sucralos 
+##     -0.3187592
+\end{verbatim}
+
+DIFFERENTIATE THE PRODUCTS FROM EACH OTHER - GRAPH FOR COMPETITIVE
+
+\normalsize
+
+\hypertarget{differentiation-factors-of-the-5-products}{%
+\subsection{Differentiation Factors of the 5
+Products:}\label{differentiation-factors-of-the-5-products}}
+
+To clearly differentiate the products from each other, we compared the
+terms of our individual lasso regressions. Here, we focused on terms
+that are only present in one of the products. When the different
+regressions contained terms which were used as synonyms, we also
+excluded them.
+
+The ``Red Bull Energy Drink'' can clearly be differentiated from the
+other analyzed products by the little chemical taste in comparison to
+other energy drinks (``chemic''). The lasso regression found that this
+is the biggest factor which drives the rating positively and does not
+occur for other products. Another good differentiation factor is that
+Red Bull is the only product here which contains the artificial
+sweetener aspartame (``aspartam''). A small research on google confirmed
+this fact. Customer do not like that Red Bull contains this and for all
+other products, aspartame did not influence the rating a lot.
+
+One product feature which differentiates ``Monster Absolutely Zero''
+from the other energy drinks is that customers appreciate the can sizes
+(``ounc''). It seems like the different offered sizes perfectly fit the
+needs of the customers. Since this was not a factor for the other
+products, we conclude that Monster offers their drinks in more suitable
+sizes. Also, people report to drink it daily (``daili'') and in class
+(``class'') which drives the ratings. These habits had not such an
+influence on the other products. We conclude from this that the
+differentiation here is that ``Monster Absolutely Zero'' is more
+consumed on a daily basis and by teacher or pupils than the other
+products. Although, these are not concrete product feature, we think
+they differentiate the use of the products and thus also count as
+differentiation factor.
+
+``5-hour Energy'' seems to not have such strong differentiation factors
+except that the can fits perfectly in pockets (``pocket''). This
+criterion was not mentioned for other products but also may not be very
+important. Although, the rating is positively driven by the fact that
+the product works great for diabetics (``diabet''), by looking into the
+reviews, we saw that this is also true for other products like ``Monster
+Absolutely Zero'' or ``Celsius Healthy Sugar Free''. These products are
+also sugar free, but the ratings are not influenced that much by that
+fact. Even though, ``5-hour Energy'' cannot be differentiated properly
+by product features, we can do so by the effect. It is the only energy
+drink where people reported so heavy effects that a lot of them had to
+go to the hospital due to strokes, skin rashes and dizziness.
+
+``Celsius Healthy Sugar Free'' is the energy drink that best convinces
+customers of its good nutritional values. One serving has a low amount
+of carbonhydrates (``carb''), only ten calories (``ten'') and a high
+amount of minerals (``miner''). Some reviews of other drinks also
+include similar arguments but not in such an extent like for ``Celsius
+Healthy Sugar Free''. We therefore interpret that this product stands
+out from the other energy drinks, especially in the area of health.
+
+Lastly, ``V8 +Energy'' differs from the other products the energy boost
+by this drink is not unpleasantly heavy and that customers do not
+experience a crash in the energy level when the effect wears off
+(``wear''). Thus, compared to the other products the effects seems to be
+smoother and does not have such heavy impacts like e.g.~``5-hour
+Energy''. Additionally, there seems to be a difference in the customer
+group since compared to the other products a lot of reviewers reported
+that they drink it while commuting to work or being on long road trips
+(``commut'' \& ``trip''). This is not the case for the other products.
+We therefore conclude that ``V8 +Energy'' is more suitable for people
+who are on the road a lot and need a smooth energy boost. As a negative
+differentiator can the aftertaste be seen. Many customers reported the
+bad aftertaste. These reviews are significantly larger than for other
+products.
+
+In conclusion, we can see that our products can be differentiated by the
+factors taste (only little chemical: Red Bull; bad aftertaste: V8 +
+Energy), ingredients/nutritional values (aspartame: Red Bull, low carb
+\& calories \& many minerals: Celsius Healthy Sugar Free), effect (heavy
+effect: 5-hour Energy, no crash: V8 + Energy), can size (good: Monster
+Absolutely Zero, pocket size: 5-hour Energy) and use (daily \& in class:
+Monster Absolutely Zero; on trips/commuting: V8 +Energy). We think that
+these factors are the most important ones to differentiate the products
+from each other.
+
+NEXT STEPS:
+
+-GRAPH FOR COMPETITIVE
+
+\textless\textless\textless\textless\textless\textless\textless{} HEAD
+
+\hypertarget{competitive-positioning}{%
+\subsection{1.5 Competitive positioning}\label{competitive-positioning}}
+
+Firstly we run the lasso regression for unigrams for all products, in
+order to obtainthe 500 terms with highest positive influence and the 500
+terms with highest negative influence.
+
+For each product, we calculate the amount of times a term appears in the
+products' review averaged over the amount of total reviews.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Custom function to calculate term frequency for specified terms in a given product\textquotesingle{}s reviews}
+\NormalTok{calculate\_term\_frequency }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(df, selected\_product, terms) \{}
+  \CommentTok{\# Filter the data for the specified product}
+\NormalTok{  data\_product }\OtherTok{\textless{}{-}} \FunctionTok{filter\_products}\NormalTok{(df, selected\_product)}
+
+  \CommentTok{\# Create a Document{-}Term Matrix (DTM) for the selected product}
+\NormalTok{  data\_product\_dtm }\OtherTok{\textless{}{-}} \FunctionTok{create\_dtm\_uni}\NormalTok{(data\_product}\SpecialCharTok{$}\NormalTok{stemming)}
+
+  \CommentTok{\# Initialize a vector to store term frequencies, defaulting to 0}
+\NormalTok{  term\_freq }\OtherTok{\textless{}{-}} \FunctionTok{rep}\NormalTok{(}\DecValTok{0}\NormalTok{, }\FunctionTok{length}\NormalTok{(terms))}
+
+  \CommentTok{\# Calculate frequency for each term, checking if it exists in the DTM}
+  \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\SpecialCharTok{:}\FunctionTok{length}\NormalTok{(terms)) \{}
+    \ControlFlowTok{if}\NormalTok{ (terms[i] }\SpecialCharTok{\%in\%} \FunctionTok{colnames}\NormalTok{(data\_product\_dtm)) \{}
+\NormalTok{      term\_freq[i] }\OtherTok{\textless{}{-}} \FunctionTok{sum}\NormalTok{(data\_product\_dtm[, terms[i]] }\SpecialCharTok{\textgreater{}} \DecValTok{0}\NormalTok{) }\SpecialCharTok{/} \FunctionTok{nrow}\NormalTok{(data\_product\_dtm)}
+\NormalTok{    \}}
+\NormalTok{  \}}
+
+  \CommentTok{\# Set the names of the term\_freq vector to the terms and return it}
+  \FunctionTok{names}\NormalTok{(term\_freq) }\OtherTok{\textless{}{-}}\NormalTok{ terms}
+  \FunctionTok{return}\NormalTok{(term\_freq)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Then we could calculate the weighted score for each product by
+multiplying the term frequency with the coefficient from the lasso
+regression. And come up with a graph to show the competitive positioning
+of the products.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Define the list of selected products}
+\NormalTok{selected\_product }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\StringTok{"5{-}hour Energy"}\NormalTok{, }\StringTok{"Celsius Healthy Sugar Free"}\NormalTok{, }\StringTok{"Monster Absolutely Zero"}\NormalTok{, }\StringTok{"V8 +Energy"}\NormalTok{, }\StringTok{"Red Bull Energy Drink"}\NormalTok{)}
+
+\CommentTok{\# Assuming coef\_product is already defined and contains coefficients for the terms}
+\NormalTok{weights }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\FunctionTok{head}\NormalTok{(}\FunctionTok{sort}\NormalTok{(coef\_product[}\SpecialCharTok{{-}}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{decreasing =} \ConstantTok{TRUE}\NormalTok{), }\AttributeTok{n =}\NormalTok{100L), }\FunctionTok{head}\NormalTok{(}\FunctionTok{sort}\NormalTok{(coef\_product[,}\DecValTok{1}\NormalTok{], }\AttributeTok{decreasing =} \ConstantTok{FALSE}\NormalTok{), }\AttributeTok{n=}\NormalTok{ 100L))}
+\NormalTok{terms }\OtherTok{\textless{}{-}} \FunctionTok{names}\NormalTok{(weights)}
+
+
+\CommentTok{\# Initialize an empty list to store the weighted scores for each product}
+\NormalTok{weighted\_scores\_list }\OtherTok{\textless{}{-}} \FunctionTok{list}\NormalTok{()}
+
+\CommentTok{\# Initialize an empty list to store the term frequency results for each product}
+\NormalTok{term\_frequency\_list }\OtherTok{\textless{}{-}} \FunctionTok{list}\NormalTok{()}
+
+\CommentTok{\# Loop through each product and calculate term frequencies (assuming df\_final1 is defined and calculate\_term\_frequency is a defined function)}
+\ControlFlowTok{for}\NormalTok{ (product }\ControlFlowTok{in}\NormalTok{ selected\_product) \{}
+\NormalTok{  term\_freq }\OtherTok{\textless{}{-}} \FunctionTok{calculate\_term\_frequency}\NormalTok{(df\_final1, product, terms)}
+\NormalTok{  term\_frequency\_list[[product]] }\OtherTok{\textless{}{-}}\NormalTok{ term\_freq}
+\NormalTok{\}}
+\CommentTok{\# Calculate weighted scores for each product}
+\ControlFlowTok{for}\NormalTok{ (product }\ControlFlowTok{in}\NormalTok{ selected\_product) \{}
+\NormalTok{  term\_freq }\OtherTok{\textless{}{-}}\NormalTok{ term\_frequency\_list[[product]]}
+  
+  \CommentTok{\# Ensure that the term frequency vector is in the same order as \textquotesingle{}terms\textquotesingle{}}
+\NormalTok{  term\_freq }\OtherTok{\textless{}{-}}\NormalTok{ term\_freq[terms]}
+
+  \CommentTok{\# Calculate weighted score}
+\NormalTok{  weighted\_score }\OtherTok{\textless{}{-}} \FunctionTok{sum}\NormalTok{(term\_freq }\SpecialCharTok{*}\NormalTok{ weights)}
+
+  \CommentTok{\# Store the weighted score}
+\NormalTok{  weighted\_scores\_list[[product]] }\OtherTok{\textless{}{-}}\NormalTok{ weighted\_score}
+\NormalTok{\}}
+
+\CommentTok{\# Convert the list to a vector for plotting}
+\NormalTok{weighted\_scores\_vector }\OtherTok{\textless{}{-}} \FunctionTok{unlist}\NormalTok{(weighted\_scores\_list)}
+\NormalTok{weighted\_scores\_vector}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##              5-hour Energy Celsius Healthy Sugar Free 
+##                0.085107996                0.052485463 
+##    Monster Absolutely Zero                 V8 +Energy 
+##                0.067537473                0.004715034 
+##      Red Bull Energy Drink 
+##                0.131309674
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Plotting the results}
+\FunctionTok{barplot}\NormalTok{(weighted\_scores\_vector, }\AttributeTok{main =} \StringTok{"Weighted Scores of Products"}\NormalTok{, }
+        \AttributeTok{ylab =} \StringTok{"Weighted Score"}\NormalTok{, }\AttributeTok{col =} \FunctionTok{rainbow}\NormalTok{(}\FunctionTok{length}\NormalTok{(weighted\_scores\_vector)),}
+        \AttributeTok{las =} \DecValTok{1}\NormalTok{,}
+        \AttributeTok{cex.names =} \FloatTok{0.5}\NormalTok{) }
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Problem_set_3_files/figure-latex/unnamed-chunk-44-1.pdf}
+
+Red Bull Energy Drink: This product has the highest weighted score,
+significantly outperforming the others. This suggests that Red Bull is
+the leading product in terms of the factors measured. This could be due
+to various reasons such as brand strength, flavour preference.As
+analysed above for the individual products is, the Amazon star rating of
+`Red Bull Energy Drink' was positively influenced by the low chemical
+taste and chemical composition (``chem'') compared to other drinks. Many
+customers also seemed to like the taste of this energy drink
+(``nectar'').
+
+5-hour Energy: This product has the second highest score and is about
+half the score of Red Bull. This indicates that 5-Hour Energy is a
+strong competitor in the market, but still significantly behind the
+market leader.The score may indicate that 5-Hour Energy segments the
+market by targeting a specific group of people. For example, they
+targeted students and others who need energy to get through the
+day/night. When they feel tired, all they need to do is drink a 5-hour
+Energy drink to stay energised and focused so they can get things done.
+For instance, they chose students and others who need energy to get
+through the day/night. When they feel tired, all they need to do is
+drink a 5 Hour Energy drink to stay energized and focused so they can
+get things done. As a student said,``Awesome Tried 5-hour energy for the
+first time tonight in my desperation to finish a paper without falling
+asleep. I thought this would have the same effect as a caffeine pill and
+leave me jittery and anxious, but I feel fine! Drank about half the
+bottle and was able to concentrate and get a huge chunk of work done.
+Lifesaver. Will definitely be using in the future as needed.
+
+Monster Absolutely Zero: With a score just over half that of 5-hour
+Energy, Monster Absolutely Zero has a noticeable presence in the market
+but does not significantly challenge the top two products. When
+customers talk about ``Monster Absolutely Zero'', they indicate that
+they are generally impressed (``impress'') and particularly impressed by
+the delicious taste (``delici'', ``decent''), highlighting the influence
+of taste or brand image. On the other hand, it is also very common for
+people to complain about the price(``cheap'') and ``health''. Therefore,
+the positioning of products in market segments needs to be redesigned.
+
+Celsius Healthy Sugar Free: This product's score is very close to
+Monster Absolutely Zero, indicating that it's a competitive alternative
+to Monster on the market. Its position suggests that it appeals to a
+similar customer base, possibly with a focus on health-conscious
+consumers given its Healthy Sugar Free descriptor. There is also some
+evidence to support this point. For example, the term ``niacin'' has a
+positive effect on the star rating of ``Celsius Healthy Sugar Free'',
+and niacin plays a role in maintaining skin health, supporting nervous
+system function and improving cholesterol levels.
+
+V8 +Energy: This product has a significantly lower score compared to the
+others, suggesting that it is a minor player in this competitive set.
+This could indicate that it has a niche audience or that it does not
+perform well on the measured factors compared to the others.Negative
+comments such as ``bland taste'', ``unnatural taste'' and ``disgusting''
+have a major impact on the appeal of their products. Improving the taste
+of a product is therefore extremely important if it is to gain consumer
+confidence and be successful.
+
+The competitive positioning on this graph suggests that Red Bull Energy
+Drink has a dominant position in the market. The others fall into a
+hierarchy with 5-Hour Energy a distant second, followed by Monster
+Absolutely Zero and Celsius Healthy Sugar Free vying for third, and V8
++Energy well behind the others.
+
+\hypertarget{task-2-automated-responses-to-complaints-or-concerns}{%
+\section{Task 2: Automated responses to complaints or
+concerns}\label{task-2-automated-responses-to-complaints-or-concerns}}
+
+\hypertarget{topic-modeling}{%
+\subsection{2.1 Topic modeling}\label{topic-modeling}}
+
+For task 2 we decided to use unigrams. One reason for that is that the
+product with the most negative reviews has about 200 of them, which is
+relatively small, so it could be difficult to extract meaningful
+bigrams. Another reason is that when exploring the data we did a topic
+modeling for both bigrams and unigrams and the results for the unigrams
+were much better interpretable than the result for the bigrams.
+
+Since we have a lot of common reviews between some products we wanted to
+do the topic modeling on a subset of the data. For choosing the products
+we want to include in the topic modeling, we took a look at the amount
+of negative reviews (1 or 2 starts) for every product:
+
+\includegraphics{Problem_set_3_files/figure-latex/unnamed-chunk-45-1.pdf}
+
+As we can see 5-hour energy has the highest amount of negative reviews,
+which is around 200. Since we do not think that 200 reviews are
+sufficient to do the topic modeling we started to include the products
+with the next highest amount of negative reviews. Since we already found
+out that there are a lot of common reviews when looking at product from
+one brand, we decided to only use one product per brand.
+
+So in the end we came up with the same list of the products we chose for
+Task 1, which are:
+
+``5-hour Energy'' , ``Celsius Healthy Sugar Free'' , ``Monster
+Absolutely Zero'' , ``V8 +Energy'' \& ``Red Bull Energy Drink''.
+
+When filtering the dataset for this products, we have 745 reviews among
+the 5 different products, which should be distinct from each other.
+
+After choosing the products we wanted to determine how many topics are
+the optimal amount for this dataset. Therefore we calculated the Bayes
+Factor for different amounts of topics (2-6):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Lets create a simple topic model for unigrams}
+\NormalTok{dtm\_unigram\_matrix }\OtherTok{\textless{}{-}} \FunctionTok{as.simple\_triplet\_matrix}\NormalTok{(data}\FloatTok{.1}\NormalTok{p\_filtered.dtm.uni)}
+
+\NormalTok{topics.exploration }\OtherTok{\textless{}{-}} \FunctionTok{topics}\NormalTok{(dtm\_unigram\_matrix, }\AttributeTok{K=}\FunctionTok{c}\NormalTok{(}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{,}\DecValTok{4}\NormalTok{,}\DecValTok{5}\NormalTok{,}\DecValTok{6}\NormalTok{,}\DecValTok{7}\NormalTok{,}\DecValTok{8}\NormalTok{,}\DecValTok{9}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Estimating on a 745 document collection.
+## Fit and Bayes Factor Estimation for K = 2 ... 9
+## log posterior increase: 90.3, 62.3, 40.4, 5.5, 7.4, 1.4, 1.3, 1.7, 5.3, 0.5, 0.3, done.
+## log BF( 2 ) = 6377.07
+## log posterior increase: 643.9, 34.9, 22.6, 14, 6.8, 3, 1, 0.3, 0.1, done.
+## log BF( 3 ) = 7645.54
+## log posterior increase: 586.3, 11.8, 2.2, 1.1, 0.5, 0.3, 0.1, done.
+## log BF( 4 ) = 7950.5
+## log posterior increase: 418.9, 9.5, 1.3, 1.1, 1.2, 0.7, 0.7, 0.4, 1, 0.3, 0.2, done.
+## log BF( 5 ) = 7906.4
+## log posterior increase: 303.8, 11.3, 4.2, 2.3, 1.7, 1.1, 0.8, 1.1, 1.7, 0.8, 0.9, 0.3, 0.2, 0.2, 0.1, done.
+## log BF( 6 ) = 7842.12
+\end{verbatim}
+
+The results we obtained are in the following table:
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+number of topics & log BF \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+2 & 6377.07 \\
+3 & 7645.57 \\
+4 & 7950.61 \\
+5 & 7915.1 \\
+6 & 7843.64 \\
+\end{longtable}
+
+Since the model with 4 different topics obtained the highest result, we
+decided to use 4 topics for the further analysis. So firstly we run the
+topic modeling with 4 different topics:
+
+\tiny
+
+\begin{verbatim}
+## 
+## Estimating on a 745 document collection.
+## Fitting the 4 topic model.
+## log posterior increase: 315.4, 130.5, 84.4, 27.3, 13.4, 5.2, 2.5, 1.4, 0.8, 0.6, 5.6, 0.4, 0.2, 0.2, done.
+\end{verbatim}
+
+\begin{verbatim}
+##           topic
+## phrase                1            2            3            4
+##   abl      2.058958e-03 1.126563e-03 1.020749e-03 2.203287e-07
+##   absolut  1.002399e-07 6.106893e-07 4.210735e-05 6.521617e-03
+##   acai     2.019564e-03 2.954001e-07 1.340952e-07 3.869661e-07
+##   acid     1.655294e-03 1.069944e-07 3.034702e-07 6.440063e-04
+##   actual   1.579794e-03 2.013632e-03 2.122810e-03 4.564565e-04
+##   add      1.057843e-03 2.532376e-04 1.301195e-03 2.015462e-04
+##   addict   3.351711e-07 1.676913e-07 1.709810e-03 1.618814e-07
+##   addit    1.048292e-03 1.131270e-07 1.628644e-07 3.440519e-04
+##   advertis 9.204849e-08 2.938611e-07 2.821459e-07 7.138211e-03
+##   affect   1.608249e-04 1.294964e-07 9.890147e-04 5.992927e-04
+\end{verbatim}
+
+\begin{verbatim}
+## 
+## Top 5 phrases by topic-over-null term lift (and usage %):
+## 
+## [1] 'whenev', 'ice', 'pineappl', 'gotitfre', 'potato' (30.2) 
+## [2] 'punctur', 'wrap', 'poor', 'mini', 'broken' (27) 
+## [3] 'scare', 'face', 'race', 'hospit', 'shake' (24) 
+## [4] 'formula', 'switch', 'secret', 'cheap', 'insan' (18.7) 
+## 
+## Dispersion = 1.63
+\end{verbatim}
+
+\normalsize
+
+To be able to interpret the different topics firstly we calculated the
+10 most probable words for every topic. The results can be found below:
+
+\tiny
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# print the most prop words for each topic}
+\NormalTok{top\_words\_matrix }\OtherTok{\textless{}{-}} \FunctionTok{get\_characteristic\_words\_with\_prob}\NormalTok{(topic\_model\_unigram)}
+\FunctionTok{print\_prop\_matrix}\NormalTok{(top\_words\_matrix)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Topic 1 :
+## tast      drink     flavor    like      energi    tri       juic      good      sucralos  just      realli    free      sugar     bad       artifici  
+## 0.08418   0.04232   0.04055   0.03379   0.02867   0.02133   0.01460   0.01330   0.01305   0.01293   0.01037   0.00994   0.00981   0.00923   0.00901   
+## 
+## Topic 2 :
+## can         one         star        product     order       box         two         packag      damag       receiv      open        flat        disappoint  time        ship        
+## 0.08064     0.04566     0.04351     0.03467     0.03159     0.01907     0.01647     0.01609     0.01341     0.01290     0.01269     0.01252     0.01081     0.01020     0.01013     
+## 
+## Topic 3 :
+## hour    energi  feel    work    tri     like    stuff   day     effect  time    just    dont    didnt   felt    made    
+## 0.02672 0.02611 0.02121 0.01915 0.01723 0.01685 0.01331 0.01158 0.01093 0.01056 0.01046 0.01036 0.01013 0.01009 0.00906 
+## 
+## Topic 4 :
+## drink    energi   price    buy      product  now      caffein  use      much     pack     get      think    good     vitamin  store    
+## 0.03763  0.03593  0.03569  0.02797  0.02547  0.02169  0.01855  0.01755  0.01411  0.01339  0.01315  0.01291  0.01139  0.01075  0.00993
+\end{verbatim}
+
+\normalsize
+
+After taking a look at the most probable words we came up with a first
+idea for every topic.
+
+\textbf{Topic 1:} This topic seems to be about the taste of the energy
+drink. Our reason for that assumption are that both words ``taste'' and
+``flavor'' seem to appear a lot within that topic. Also noticeable is
+that like is really high in this analysis so it seems that reviewers are
+rating how they liked the taste of the energy drink.
+
+\textbf{Topic 2:} By looking at the most probable words of topic 2 it
+seems really clear that this topic is about shipping and packaging
+issues, since we see words like ``box'', ``package'', ``ship'' and
+``order'' in this list. Another indicator supporting this interpretation
+are the words ``damage'' and ``open'' which could refer to the point
+that people received damaged packages or even a box where the contents
+of the package were broken (energy drink cans).
+
+\textbf{Topic 3:} Topic 3 is not that clear when looking only at the 10
+most probable words. Our idea was that this topic is about people
+reporting how they felt after drinking the energy drinks and which side
+effects they experienced. We come to this assumption because the words
+``feel'' and ``felt'' seem to be important for that topic. Also that
+``effect'' appears in this list is another indicator that topic 3 is
+about the influence of the energy drink on the people.
+
+\textbf{Topic 4:} The idea we had is that this topic could be about
+price complains of customers. One reason for that assumption is that
+``buy'' and ``price'' are the most probable words in this topic (and
+``money'' is also part of the most probable words) and we would think
+that customers who use the word price in their review (which only had 1
+or 2 stars) were not satisfied with the offer they got. Also maybe the
+presence of the word ``store'' could support this, because people may
+indicate that they could get a better price at a physical store than on
+amazon.
+
+Since we had issues interpreting all the topics only from the list of
+the most probable words, especially topic 4, we also conducted a
+analysis which delivers the words with the ``most pronounced difference
+to average per topic'', where we compare the probability of a word to be
+found inside a topic to the average probability across all topics.
+
+\tiny
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# print the most pronounced difference to average per topic}
+\NormalTok{diff\_to\_avg\_per\_topic }\OtherTok{\textless{}{-}} \FunctionTok{get\_characteristic\_words\_with\_log\_ratio}\NormalTok{(topic\_model\_unigram)}
+\FunctionTok{print\_prop\_matrix}\NormalTok{(diff\_to\_avg\_per\_topic, }\AttributeTok{value\_row =} \StringTok{"log\_ratio"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Topic1 :
+## flavor     sucralos   artifici   sweeten    mango      peach      sweet      green      blueberri  pomegran   fruit      bzzagent   vfusion    aftertast  veget      
+## 1.38628    1.38627    1.38626    1.38625    1.38625    1.38625    1.38624    1.38623    1.38622    1.38622    1.38622    1.38622    1.38620    1.38620    1.38619    
+## 
+## Topic2 :
+## star      box       damag     flat      order     leak      ship      packag    dent      shipment  expir     arriv     bust      explod    broken    
+## 1.38629   1.38628   1.38628   1.38627   1.38627   1.38627   1.38626   1.38626   1.38626   1.38625   1.38625   1.38625   1.38624   1.38624   1.38624   
+## 
+## Topic3 :
+## felt       feel       work       heart      jitteri    tire       help       awak       minut      crash      sick       headach    sleep      experienc  eat        
+## 1.38626    1.38625    1.38625    1.38624    1.38621    1.38621    1.38621    1.38620    1.38620    1.38619    1.38619    1.38618    1.38617    1.38616    1.38616    
+## 
+## Topic4 :
+## price       complex     now         liquid      taurin      ounc        increas     formula     guarana     advertis    ridicul     cheaper     overpr      decaf       supplement  
+## 1.38628     1.38626     1.38625     1.38624     1.38624     1.38622     1.38622     1.38622     1.38622     1.38620     1.38619     1.38619     1.38618     1.38618     1.38618
+\end{verbatim}
+
+\normalsize
+
+\textbf{Topic 1:} This results seem to support our assumption that this
+topic is about the taste of the product, since we obtain words which are
+used to define the taste (``mango'', ``peach'', ``citrus''). Also the
+words ``artificial'' and ``aftertaste'' probably refer to the taste
+experience the consumer had. Therefore we concluded that topic 1 is
+\textbf{overall taste}.
+
+\textbf{Topic 2:} Now we find even more words which could suggest that
+people received a damaged package (``damage'', ``leak'', ``explode'',
+``broken'' and ``wet''). Here also the results support the hypothesis
+that topic 2 is about shipping and packaging issues. So our our
+definition for this topic is \textbf{shipment \& packaging}.
+
+\textbf{Topic 3:} Here also the results support the idea that topic 3 is
+about the unwanted effects of the energy drink on the consumer, because
+we find a lot of words which probably describe the feeling of the
+consumer after drinking an energy drink (``tired'', ``jittery'',
+``headach'', ``sick''). So we defined this topic as \textbf{negative
+effects}.
+
+\textbf{Topic 4:} Now we find even more words which could refer to the
+price the customers paid . Even ``overpriced'' is now part of that
+analysis. But also we find a lot of ingredients for energy drinks in
+this list such as taurin and guarana. But this could be because the
+reviewers may think that they paid to much for what is really inside the
+drink. So we would conclude that topic 4 refers to the
+\textbf{price-performance ratio}.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# add your topic names here}
+\NormalTok{list\_of\_topic\_names }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\StringTok{"overall taste"}\NormalTok{, }\StringTok{"shipment \& packaging"}\NormalTok{, }\StringTok{"negative effects"}\NormalTok{, }\StringTok{"price{-}performance ratio"}\NormalTok{)}
+
+\CommentTok{\# add your topic descriptions here:}
+\NormalTok{topic\_descriptions }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}
+  \StringTok{"overall taste: The reviewer talks about the taste of the product which he experienced as bad"}\NormalTok{,}
+  \StringTok{"shipment \& packaging: The reviewer had issues with the shipment and packaging, because the package didnt      arrive in the way the customer expected, especially because the cans inside the package were damaged "}\NormalTok{,}
+  \StringTok{"negative effects: The reviewer talks about side effects he experienced after drinking the energy drink, which   lead to negative consequences for the consumer."}\NormalTok{,}
+  \StringTok{"price{-}performance ratio: The reviewer talks about the price of the product and whether the product is worth the price, because he felt like that the price was to high."}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{predicting-the-dominating-topic}{%
+\subsection{2.2 Predicting the dominating
+topic}\label{predicting-the-dominating-topic}}
+
+Now we want to create a function that predicts the dominating topic of a
+review. So even if the customer had more than one issue with the product
+and mentioned different topics in his review we want to derive the most
+important topic of the review, so later the Chatbot can create an
+automated answer referring to that topic.
+
+Therefore we created a function which takes the topic modeling and the
+preprocessed review we want to test as an input. Here it is important
+that the preprocessing of the review followed the same steps as the
+preprocessing of the topic modeling, otherwise the function will not
+find a match between the review and the topic modeling. Then we create a
+Document Term Matrix for this single review. After that we compare this
+Matrix with our topic modeling and come up with 5 probabilities (one for
+each topic) that indicate if the topics are part of the review. In the
+end we just compare the 5 different probabilities and search for the
+highest one. Since each probability refers to one topic we than just
+choose the topic with the highest probability.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# function that takes a review and a topic model and returns the topic with the highest probability}
+\NormalTok{predict\_topic\_with\_maptpx }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(preprocessed\_review, topic\_model, dtm) \{}
+  \CommentTok{\# Tokenize the review and count the frequency of each term}
+\NormalTok{  review\_source }\OtherTok{\textless{}{-}} \FunctionTok{VectorSource}\NormalTok{(preprocessed\_review)}
+\NormalTok{  review\_corpus }\OtherTok{\textless{}{-}} \FunctionTok{VCorpus}\NormalTok{(review\_source)}
+\NormalTok{  review\_dtm }\OtherTok{\textless{}{-}} \FunctionTok{DocumentTermMatrix}\NormalTok{(review\_corpus, }\AttributeTok{control =} \FunctionTok{list}\NormalTok{(}\AttributeTok{dictionary =} \FunctionTok{Terms}\NormalTok{(dtm)))}
+
+  \CommentTok{\# Adjust the review DTM to have the same structure as the training DTM}
+  \CommentTok{\# New terms in the review that are not in the training DTM are ignored}
+\NormalTok{  review\_dtm }\OtherTok{\textless{}{-}}\NormalTok{ review\_dtm[, }\FunctionTok{Terms}\NormalTok{(dtm)]}
+\NormalTok{  review\_dtm }\OtherTok{\textless{}{-}} \FunctionTok{cbind}\NormalTok{(review\_dtm, }\FunctionTok{matrix}\NormalTok{(}\DecValTok{0}\NormalTok{, }\AttributeTok{nrow =} \FunctionTok{nrow}\NormalTok{(review\_dtm), }\AttributeTok{ncol =} \FunctionTok{ncol}\NormalTok{(dtm) }\SpecialCharTok{{-}} \FunctionTok{ncol}\NormalTok{(review\_dtm)))}
+
+  \CommentTok{\# Use the predict.topics function from the maptpx package}
+\NormalTok{  predicted\_weights }\OtherTok{\textless{}{-}} \FunctionTok{predict.topics}\NormalTok{(topic\_model, }\AttributeTok{newcounts =}\NormalTok{ review\_dtm)}
+  
+  \CommentTok{\# Extract the most probable topic}
+\NormalTok{  most\_probable\_topic }\OtherTok{\textless{}{-}} \FunctionTok{which.max}\NormalTok{(}\FunctionTok{colSums}\NormalTok{(predicted\_weights))}
+  
+  \FunctionTok{return}\NormalTok{(most\_probable\_topic)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+After building the function we want to test based on a few examples if
+the topic prediction function actually returns the most dominating topic
+and if thats in line with what would a human think when reading the
+review.
+
+\hypertarget{example}{%
+\subsubsection{1. Example}\label{example}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# take a review from the selected product as an example}
+\CommentTok{\# some example review for testing}
+\NormalTok{example\_review }\OtherTok{=}\NormalTok{ data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{review[}\DecValTok{3}\NormalTok{]}
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(}\StringTok{"The example review is:"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "The example review is:"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{print}\NormalTok{(example\_review)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "One Star When they arrived they looked like they had been dropped, cans were damaged. Not happy at all."
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{example\_review\_preprocessed }\OtherTok{=}\NormalTok{ data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{stemming[}\DecValTok{3}\NormalTok{]}
+
+
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(}\StringTok{"The most dominant topic for this review is:"}\NormalTok{, }\FunctionTok{predict\_topic\_with\_maptpx}\NormalTok{(example\_review\_preprocessed, topic\_model\_unigram, data}\FloatTok{.1}\NormalTok{p\_filtered.dtm.uni)))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "The most dominant topic for this review is: 2"
+\end{verbatim}
+
+For this review our algorithm choose topic 2 (shipment \& packaging)
+which seems to be accurate since it seems like that the package and the
+contents were damaged, when it arrived.
+
+\hypertarget{example-1}{%
+\subsubsection{2. Example}\label{example-1}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# take a review from the selected product as an example}
+\CommentTok{\# some example review for testing}
+\NormalTok{example\_review }\OtherTok{=}\NormalTok{ data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{review[}\DecValTok{23}\NormalTok{]}
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(}\StringTok{"The example review is:"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "The example review is:"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{print}\NormalTok{(example\_review)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "Extremely Hazardaous Please if you love yourself or your kids-STAY AWAY.Long term effects of excessive caffeine are well known Hypertension,Cardiac arrhythmia,Stroke,Aggressive Behavior and DEATH.Only yourself to blame, remember you have read this warning."
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{example\_review\_preprocessed }\OtherTok{=}\NormalTok{ data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{stemming[}\DecValTok{23}\NormalTok{]}
+
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(}\StringTok{"The most dominant topic for this review is:"}\NormalTok{, }\FunctionTok{predict\_topic\_with\_maptpx}\NormalTok{(example\_review\_preprocessed, topic\_model\_unigram, data}\FloatTok{.1}\NormalTok{p\_filtered.dtm.uni)))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "The most dominant topic for this review is: 3"
+\end{verbatim}
+
+In this case our prediction also seems to work since the reviewer is
+referring about long-term unwanted effects of the energy drink, which
+could be seen as negative effects which is our definition topic 3.
+
+\hypertarget{example-2}{%
+\subsubsection{3. Example}\label{example-2}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# take a review from the selected product as an example}
+\CommentTok{\# some example review for testing}
+\NormalTok{example\_review }\OtherTok{=}\NormalTok{ data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{review[}\DecValTok{16}\NormalTok{]}
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(}\StringTok{"The example review is:"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "The example review is:"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{print}\NormalTok{(example\_review)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "Love RedBull, Hate New Amazon Price I have absolutely no problems with red bull and love the stuff. I used to get it from here for me and the folks at the office. Only now with the amazon price hike I'll have to go somewhere else."
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{example\_review\_preprocessed }\OtherTok{=}\NormalTok{ data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{stemming[}\DecValTok{16}\NormalTok{]}
+
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(}\StringTok{"The most dominant topic for this review is:"}\NormalTok{, }\FunctionTok{predict\_topic\_with\_maptpx}\NormalTok{(example\_review\_preprocessed, topic\_model\_unigram, data}\FloatTok{.1}\NormalTok{p\_filtered.dtm.uni)))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "The most dominant topic for this review is: 4"
+\end{verbatim}
+
+This prediction also does seem to be in line with what a human would
+conclude, since the main concern of the customer is the price on amazon.
+
+\hypertarget{example-3}{%
+\subsubsection{4. Example}\label{example-3}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# take a review from the selected product as an example}
+\CommentTok{\# some example review for testing}
+\NormalTok{example\_review }\OtherTok{=}\NormalTok{ data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{review[}\DecValTok{561}\NormalTok{]}
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(}\StringTok{"The example review is:"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "The example review is:"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{print}\NormalTok{(example\_review)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "Not the best tasting, energy wise works decent but its hard ... Not the best tasting, energy wise works decent but its hard to finish the can and to be motivated to open another. Hoping the other flavors taste much better."
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{example\_review\_preprocessed }\OtherTok{=}\NormalTok{ data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{stemming[}\DecValTok{561}\NormalTok{]}
+
+\FunctionTok{print}\NormalTok{(}\FunctionTok{paste}\NormalTok{(}\StringTok{"The most dominant topic for this review is:"}\NormalTok{, }\FunctionTok{predict\_topic\_with\_maptpx}\NormalTok{(example\_review\_preprocessed, topic\_model\_unigram, data}\FloatTok{.1}\NormalTok{p\_filtered.dtm.uni)))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "The most dominant topic for this review is: 1"
+\end{verbatim}
+
+Also in this case the prediction seem to work very well, because the
+reviewer has issues with the taste of the energy drink, which refers to
+our first topic.
+
+After testing some samples we could see that our prediction model is
+able to predict the right dominant topic for the reviews since the
+results are in line with what we conclude when looking at the reviews.
+
+Now we want to examine which topic is dominating the most reviews and
+how they are distributed. Therefore we calculated the most dominating
+topic for every negative review of the 5 products and plotted the
+distribution of the results:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Now lets apply the function to predict the dominating topic for each review}
+\NormalTok{data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{dominating\_topic }\OtherTok{\textless{}{-}} \FunctionTok{sapply}\NormalTok{(data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{stemming, predict\_topic\_with\_maptpx, topic\_model\_unigram, data}\FloatTok{.1}\NormalTok{p\_filtered.dtm.uni)}
+
+
+\NormalTok{data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{dominating\_topic\_name }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{dominating\_topic }\SpecialCharTok{==} \DecValTok{1}\NormalTok{, }\StringTok{"overall taste"}\NormalTok{,}
+                    \FunctionTok{ifelse}\NormalTok{(data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{dominating\_topic }\SpecialCharTok{==} \DecValTok{2}\NormalTok{, }\StringTok{"shipment \& packaging"}\NormalTok{,}
+                           \FunctionTok{ifelse}\NormalTok{(data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{dominating\_topic }\SpecialCharTok{==} \DecValTok{3}\NormalTok{, }\StringTok{"negative effects"}\NormalTok{,}
+                                  \FunctionTok{ifelse}\NormalTok{(data}\FloatTok{.1}\NormalTok{p\_filtered}\SpecialCharTok{$}\NormalTok{dominating\_topic }\SpecialCharTok{==} \DecValTok{4}\NormalTok{, }\StringTok{"price{-}performance ratio"}\NormalTok{, }\ConstantTok{NA}\NormalTok{))))}
+
+\CommentTok{\# after that we plot the distribution of the dominating topics}
+\NormalTok{data}\FloatTok{.1}\NormalTok{p\_filtered }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(dominating\_topic) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{n =} \FunctionTok{n}\NormalTok{()) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =} \FunctionTok{reorder}\NormalTok{(dominating\_topic, n), }\AttributeTok{y =}\NormalTok{ n)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_bar}\NormalTok{(}\AttributeTok{stat =} \StringTok{"identity"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{coord\_flip}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \StringTok{"Topic"}\NormalTok{, }\AttributeTok{y =} \StringTok{"Number of reviews"}\NormalTok{, }\AttributeTok{title =} \StringTok{"Number of reviews for each topic"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\includegraphics[width=0.7\linewidth]{Problem_set_3_files/figure-latex/unnamed-chunk-58-1} \end{center}
+
+As we can see the most often dominating topic is ``overall taste'' with
+more than 220 reviews. So the biggest amount of people is concerned with
+the taste of the products. This is followed by ``shipment \&
+packaging'', which seems to be the dominating topic of around 180
+reviews. The least often dominating topic when doing our prediction is
+the price-performance ratio.
+
+\hypertarget{automated-answers-based-on-the-prediction-function}{%
+\subsection{2.3 Automated answers based on the prediction
+function}\label{automated-answers-based-on-the-prediction-function}}
+
+Now we set up GPT 4 to write automated responses to the reviews. Since
+we should use our dominant topic prediction for this task, we calculated
+the dominating topic for each review according to the function we built
+in 2.2.
+
+\hypertarget{testing-the-answers}{%
+\subsubsection{Testing the answers}\label{testing-the-answers}}
+
+Since GPT could deliver different answers based on the instructions we
+set up 5 different prompts to test which one works best. After that we
+conducted a small survey where we showed participants answers of every
+prompt on 5 different reviews (index numbers: 3, 16, 23, 561, 654) and
+asked them to rate every answer on a scale of 1-5. Then we can derive
+the score for every prompt and chose the one with the highest results
+for our final prompt.
+
+Since we want to show you an example that the different prompts lead to
+different answers of GPT we chose the following review for doing that:
+
+``it seems like every other month I have busted cans I have a
+subscription that I will be cancelling, it seems like every other month
+I have busted cans. This month I had 3 broken cans and the mail man
+would not even deliver it because the box was falling apart, so I had to
+leave work early to pick it up from the post office. It then takes me
+another 20 minutes to clean all the good cans up. I love the idea of
+having this product come right to my doorstep but not if it creates more
+work for me.''
+
+\hypertarget{basic-prompt}{%
+\subsubsection{1. Basic prompt}\label{basic-prompt}}
+
+First we set up a prompt which takes the review, the topic we found out
+through our topic prediction approach and a short description of the
+topic. Also we gave it the following instruction to start with: ``You
+are an helpful assistant that understands the customers needs to answer
+them. You are given a negative review of a energy drink product from
+consumers which are unhappy with the product. Also you are given the
+main topic of the review and the explanation of the topic as topic
+description. Given the content of review and the topic of the review
+formulate an answer. You have the following restrictions which you must
+adhere to in any case: - Do not make anything up you don't know''
+
+Using this prompt the answer for our example review is:
+
+``Dear valued customer,
+
+Thank you for taking the time to provide your feedback regarding the
+shipment and packaging of your energy drink subscription. We are truly
+sorry to hear about the recurring issues you've experienced with the
+delivery of your orders, including the most recent incident with the
+damaged cans and the inconvenience it caused you.
+
+We understand that receiving your product in perfect condition is of
+utmost importance and it's clear that we have not met those expectations
+in this instance. The experience you described with the packaging not
+being sturdy enough to protect the cans during transit is certainly not
+the level of quality we strive to provide.
+
+Please rest assured that we take your concerns seriously. We are
+committed to investigating this matter to understand where the breakdown
+occurred in the shipping process and to ensure that corrective measures
+are taken. Our goal is to provide not only a high-quality product but
+also a seamless delivery experience.
+
+To help resolve this issue, we would like to offer you a replacement for
+the damaged cans at no additional cost to you. Additionally, we will be
+reviewing our packaging and shipment procedures with our delivery
+partners to prevent such incidents from happening in the future.
+
+We value your business and would like to retain you as a customer. If
+you are willing to give us another chance, please contact our customer
+service team at your earliest convenience so we can make this right.
+Your satisfaction is our priority, and we hope to have the opportunity
+to demonstrate our commitment to quality service.
+
+Thank you again for your feedback, and we apologize for any
+inconvenience this has caused.
+
+Sincerely, {[}Your Company's Customer Service Team{]}''
+
+\hypertarget{modifixing-the-basic-prompt}{%
+\subsubsection{2. Modifixing the basic
+prompt}\label{modifixing-the-basic-prompt}}
+
+One problem we discovered when we did the first prompt was that GPT
+answered from the perspective of the Red Bull customer service (or other
+energy drink brands). So we clarified in the instructions that this
+answer should be from the perspective of the Amazon customer support.
+Also we added a limit for the characters (500), because when we did not
+do that in the basic prompt we got really long answers (as seen in the
+example) which we feel like are not suited well for the review section
+on amazon.
+
+Using this modified prompt the answer for our example review is:
+
+``I'm sorry to hear about the issues with your shipment and packaging.
+We aim for your orders to arrive in perfect condition. Please contact us
+through your Amazon account so we can address this promptly, including
+arranging for a replacement or refund and providing feedback to our
+shipping partners to prevent future occurrences. Your satisfaction is
+our priority.''
+
+\hypertarget{adjustments}{%
+\subsubsection{3. Adjustments}\label{adjustments}}
+
+Then we noticed that GPT tended to start and end their answer
+differently. Therefore we gave it the restriction that the answer should
+always start with ``Dear Customer'' and end with ````Best regards from
+the customer service team''. Also we saw that it include the term
+``price-performance ratio'' in the review which is one of our topics.
+But we think that it is probably better to use the term price instead,
+since some people might not feel addressed when speaking about the
+ratio.
+
+By using this adjusted prompt we are obtaining the following answer:
+
+``Dear customer,
+
+I'm truly sorry to hear about the recurring issues with the shipment and
+packaging of your energy drink order. We take such feedback seriously
+and aim to ensure that all products arrive in perfect condition. Please
+contact us directly so we can assist with a resolution, including a
+replacement or refund for the damaged items.
+
+Best regards from the customer service team''
+
+\hypertarget{specifications}{%
+\subsubsection{4. Specifications}\label{specifications}}
+
+For the last prompt we became even more specific in the instructions,
+for example explicitly explaining the meaning of the topic description.
+Also we added in the instructions that it should answer ``like a
+professional customer service employee'' would do to see if that maybe
+increases the quality of the answer. Also in some answers we saw that it
+recommended to look for other retailers. Since we dont feel like that
+this would be a suggestion of the own customer service, we added to the
+list of the restrictions that it should not recommend other retailers.
+Also in cases where the main topic is ``negative effects'' or ``shipment
+\& packaging'' we wanted that GPT is offering the possibility of
+contacting the customer service for resolution, so we also added that
+part in the instructions.
+
+When we use this more specified version of the prompt, the answer for
+the example review is: ``Dear customer,
+
+We're sorry to hear about the issues with the shipment and packaging of
+your energy drink order. It's important to us that your products arrive
+in perfect condition. Please reach out to our customer service team so
+we can address this matter promptly and to your satisfaction.
+
+Best regards from the customer service team''
+
+\hypertarget{reformulating-the-instruction}{%
+\subsubsection{5. Reformulating the
+instruction}\label{reformulating-the-instruction}}
+
+Since we only added things to the instruction in the last step we
+decided to completely reformulate the instruction to see if different
+wording could make a difference. But we will keep the list of
+restrictions that we built up through the different prompts since it
+includes basic things like how to address the reviewer and how long the
+answer should be. We changed the instructions in a way that we tell GPT
+to base the answer more on the topic and the topic description of the
+review to be able to determine whether that makes a difference in the
+quality of the answer.
+
+Now the answer for our example review is:
+
+``Dear customer, We're truly sorry to hear about the recurring issues
+with the shipment and packaging of your energy drink subscription. It's
+important to us that your products arrive in perfect condition. Please
+reach out to our customer service team so we can address this matter
+promptly and ensure your satisfaction with future deliveries.
+
+Best regards from the customer service team''
+
+\hypertarget{evaluation-of-the-different-prompts}{%
+\subsubsection{Evaluation of the different
+prompts}\label{evaluation-of-the-different-prompts}}
+
+Based on our example review we could see that the answer of GPT differs
+between the different prompts we are giving GPT. To be able to rate the
+quality of the answer and after that choose a final prompt we conducted
+a survey where we displayed all alternative answers for a review and
+asked the participants (mainly our group, but also 3 people who are not
+part of the course) to rate the suitability of the answer to the
+specific review on a scale of 1 to 5, where 5 means that the answer is
+perfectly suited for the concern the customer has and 1 that the answer
+is not appropriate at all. The participants were told that they should
+imagine that this answer was posted under the respective review and
+
+Then we calculated the sum of the ratings for every answer and divided
+it by the amount of participants to get the mean score of every answer.
+
+After that we summed up the score for every answer that was generated by
+using the same prompt and divided the result by 5 (since we use 5
+different reviews in this survey). You can find the results of this
+calculation in the table below:
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Prompt & Average rating over all 5 reviews \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+& \\
+& \\
+& \\
+& \\
+& \\
+& \\
+\end{longtable}
+
+As we can see prompt xy obtained the highest score, so we decided to use
+that prompt as our final template for asking GPT to write a response to
+the review. (If you want to test this prompt with your own reviews, you
+can find the corresponding code where you are able to insert a review at
+the end of this document)
+
+\hypertarget{automated-answers-without-prediction-function}{%
+\subsection{2.4 Automated answers without prediction
+function}\label{automated-answers-without-prediction-function}}
+
+For testing whether GPT generates better answers when we do not give it
+the topic we derived using our prediction model we developed 2 different
+approaches:
+
+\hypertarget{predicting-the-dominant-topic}{%
+\subsubsection{Predicting the dominant
+topic}\label{predicting-the-dominant-topic}}
+
+First we want to take a random sample of 20 reviews and compare the
+prediction of our prediction model with a prediction of GPT. Therefore
+we give GPT the review and ask to return the most dominant topic of the
+review. Therefore we also gave GPT all the topic names and the
+respective description, so that GPT uses the same categories as we did.
+By doing that we are able to analyze whether there are differences
+between our prediction and the one of GPT.
+
+The following plot shows the comparison of our function and GPTs
+prediction. The darker the color the more often the topic was predicted.
+Assuming our prediction and the one of GPT does not make a difference,
+than the boxes would appear only on the diagonal of the heatmap.
+
+\begin{center}\includegraphics[width=0.7\linewidth]{Problem_set_3_files/figure-latex/unnamed-chunk-76-1} \end{center}
+
+As we can see in most of the cases GPT predicts the same most dominant
+topic as we did with our own prediction function, since the boxes on the
+diagonal are the most darkest. For example in the cases where we
+predicted the ``negative effects'' as most dominant topic of the review,
+GPT did the same prediction for every of that reviews. But in some cases
+GPT actually predicts a different topic than we did. For example when we
+predicted the ``price-perfomance ratio'' as the most dominant topic for
+some reviews GPT instead predicted the ``negative effects'' or the
+``shipment \& packaging'' as main concern of the customer. Also when we
+predicted the ``overall taste'' as the most dominant topic in one case
+GPT instead assigned the negative effects topic to that review instead
+of the taste. In this sample the main difference between our prediction
+and the one of GPT occurs when we predicted ``shipment \& packaging'' as
+the most dominant topic. In 5 cases GPT actually thinks that instead the
+main concern of the reviewer is the ``overall taste''. Therefore we took
+a look at two examples where this occurred:
+
+Review 1: ``One Star Taste Awful!''
+
+In this case GPT seems to be more accurate since the review is not about
+the shipment \& packaging in any ways but only refers to the taste as
+the reason for the bad rating. One reason why our prediction failed in
+this case could be that the review is very short (4 words) which seems
+to be a problem for our prediction algorithm since it has to make the
+decision on much less information.
+
+Review 2: ``Two Stars This is the worst monster flavor\ldots. But I
+still drink it''
+
+Also in this case GPT seems to be more accurate because again the review
+has nothing to do with the shipment \& packaging and again only refers
+to the taste. But as the other example also this review is relatively
+short. One conspicuousness is that in both reviews the term ``star''
+appears which could maybe be a driver for our prediction to put it in
+the shipment \& packaging category.
+
+All in all we could see that in most cases of this random sample our
+prediction is in line with the one from GPT, but in for some reviews our
+prediction seems to fail and the answer of GPT is more accurate.
+Therefore we would expect that also the answers of GPT without giving
+them the topic of the review could be more accurate and therefore better
+suited.
+
+\hypertarget{evaluation-of-the-answer-quality}{%
+\subsubsection{Evaluation of the answer
+quality}\label{evaluation-of-the-answer-quality}}
+
+Secondly we want to compare answers of the model of task 2.3 to answers
+of GPT without the input of the topic and the topic description.
+Therefore we selected 10 different reviews (we used the same reviews
+that we tested the 5 different prompts from Task 2.3 with and added the
+following index numbers: 333, 45, 299, 483, 101 ) and generated answers
+for both of them. Then we created a poll were we showed 6 people
+(including us 4 and 2 outside raters) the review and both answers and
+asked which one they liked better as answer for the respective review or
+if they are indifferent between those. Then we can derive what the
+majority of our poll participants prefer to get an impression which
+answers are better suited.
+
+Therefore we set up a GPT prompt which has the review as the input and
+the following instructions: ``You are an helpful assistant that
+understands the customers needs and gives the customer an answer to
+address his concerns. You are given a negative review of a energy drink
+product. Given the review you should address the concern of the customer
+by finding the main issue they have.''You have the following
+restrictions which you must adhere to in any case: - Do no make anything
+up you don't know'' - You keep your responses to no more than 500
+characters long (including whitespace)'' - You sign off every message
+with `Best regards from the customer service team''' - Do not address
+the reviewer by name, just call him "customer". \n'' - Do not make
+anything up outside of the context that is given you!''
+
+To show that the different prompts lead to different answers we chose
+one example review and generated one answer with giving the input of the
+topic and one without the topic as input.
+
+Example review: ``Extremely Hazardaous Please if you love yourself or
+your kids-STAY AWAY.Long term effects of excessive caffeine are well
+known Hypertension,Cardiac arrhythmia,Stroke,Aggressive Behavior and
+DEATH.Only yourself to blame, remember you have read this warning.''
+
+Answer with giving the topic:\\
+``Dear customer,We're truly sorry to hear about your experience with the
+energy drink. Your health and safety are our top priorities. We take
+concerns about negative effects very seriously. Please reach out to our
+customer service team to discuss this matter further so we can address
+your concerns appropriately.Best regards from the customer service
+team''
+
+Answer without giving the topic: ``Dear customer,We're concerned to hear
+about your experience. Our product is designed to be enjoyed
+responsibly, and we always advise consumers to follow the recommended
+serving size. We take health issues seriously and will pass on your
+feedback to our product safety team for review.Best regards from the
+customer service team''
+
+As you can see the answer without giving the topic is more about the
+product design and the intake recommendation as the prompt with giving
+the topic delivered an answer which is more concerned about the health
+of the reviewer.
+
+After we got the results of the survey we calculated the score for both
+options. We did this by assign 1 point every time a participants chose 1
+of the answers to the prompt with which the answer was generated. In
+case participants stated that they were indifferent between the 2
+answers we assigned a point to both options. So the highest possible
+score for an option is amount of the participants (6) multiplied with 10
+(since we asked every participant for his opinion on 10 different
+reviews) which equals 60. Then we summed up the points for both options
+and compared the score.
+
+In 27 of the 60 cases our participants preferred the answer generated
+with the model without telling it the most dominant topic we found using
+our prediction function. In 18 cases people preferred the answer where
+we gave the model the main topic of the review and in the last 15 cases
+our participants were indifferent between the two answers.
+
+So when we sum up the score for both options the answers without the
+topic as input obtained a result of 43/60 points and the answers with
+telling GPT the topic had a final score of 33/60 points. So we would
+conclude that in most cases the model without giving GPT the topic on
+average generates the better answers. Possible reasons for that may be
+that some reviews have more than issue with the product, but when we
+tell GPT the main topic it only refers to that whether when we do not
+have the topic as input it can reply to more than one issue. Another
+reason could be that the answers when we do not give the topic are more
+specific to the review, because GPT does not have more information to
+base the answer on. And a third reason could be that GPT is better in
+identifying the main concern of the customer, which we already found
+evidence for above.
+
+But also in some cases the model which has the topic \& the topic
+description as inputs produces answers which were more appealing to our
+raters than the other model. For example for one review regarding the
+price of the product GPT suggested to ``consider bulk purchases''. Maybe
+this was a too specific suggestions for our raters or they did not have
+the financial requirements to do big bulk purchases.
+
+\hypertarget{review-inputs}{%
+\section{Review Inputs}\label{review-inputs}}
+
+We created a small application that allows inputting a custom review.
+The review is then preprocessed and the outputs of the GPT functions
+from 2.3 and 2.4 are returned. To start the application just run the two
+code chunks below. The application will then automatically start in a
+new window.
+
+\end{document}

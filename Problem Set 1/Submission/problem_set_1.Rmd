@@ -1,0 +1,1713 @@
+---
+title: "| ![](../Images/Logo/Logo_KIT.png){width=2in} \\vspace{0.2in} \n`r format(params$title)`\n - Marketing Analytics \\vspace{0.1in} "
+subtitle: "Institute of Information Systems and Marketing (IISM)"
+author: "Julius Korch, Marco Schneider, Stefan Stumpf, Zhaotai Liu \n \\vspace{1in} "
+date: "Last compiled on `r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  pdf_document:
+    toc: true
+params:
+  title: "Problemset 1"
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r include=FALSE}
+####################################
+## SPACE FOR FUNCTIONS AND PACKAGES
+# Install ggplot2 if not already installed
+install_package_if_required <- function(package_names) {
+  for (package_name in package_names) {
+    if (!requireNamespace(package_name, quietly = TRUE)) {
+      install.packages(package_name)
+    }
+  }
+}
+install_package_if_required(c("ggplot2", "magrittr", "tidyr", "broom", "MASS", "caret", "reshape2", "dplyr", "gridExtra"))
+library(ggplot2)
+library(magrittr)
+library(tidyr)
+library(broom)
+library(MASS)
+library(caret)
+library(reshape2)
+library(dplyr)
+library(gridExtra)
+
+# Define project colors
+primary <- '#3A6B35'
+secondary <- '#79ab74'
+tertiary <- '#E3B448'
+quaternary <- '#E0A96D'
+quinary <- '#B85042'
+senary <- '#F1AC88'
+septenary <- '#79A7D3'
+octonary <- '#6883BC'
+nonary <- '#8A307F'
+denary <- '#2F3C7E'
+eleventh <- '#FF69B4'
+dark <- '#28282B'
+
+# function that loads and merges the data from the first problem set
+load_problemset1_data <- function() {
+  # load the data from the csv file
+  df_mat <- read.csv("Material/data/raw/student-mat.csv", sep = ";")
+  df_por <- read.csv("Material/data/raw/student-por.csv", sep = ";")
+  
+  # create a new column is_mat and is_por and merge the two datasets
+  df_mat$is_mat <- 1
+  df_por$is_por <- 1
+  df <- merge(df_mat, df_por, all = TRUE)
+  
+  # set all null values from is_por and is_mat to 0
+  df$is_por[is.na(df$is_por)] <- 0
+  df$is_mat[is.na(df$is_mat)] <- 0
+  
+  return(df)
+}
+
+# function that one hot encodes all categorical columns
+one_hot_encode <- function(df, columns_cat) {
+  # Ensure the specified columns are character or factor type
+  df[, columns_cat] <- lapply(df[, columns_cat], as.character)
+  
+  # One-hot encode the specified categorical columns
+  encoded_df <- model.matrix(~.-1 + ., data = df[, columns_cat])
+  
+  # Combine the one-hot encoded columns with the original data frame
+  df <- cbind(df, encoded_df)
+  
+  # Remove the original categorical columns
+  df <- df[, !names(df) %in% columns_cat]
+  
+  # Return the modified data frame
+  return(df)
+}
+####################################
+
+```
+
+\newpage
+
+```{r, include=FALSE}
+# Check the data types of the columns.
+str(df)
+```
+
+```{r include=FALSE}
+# Data Preparation
+
+df_mat <- read.csv("../Material/data/raw/student-mat.csv", sep = ";")
+df_por <- read.csv("../Material/data/raw/student-por.csv", sep = ";")
+
+# Select the categorical values
+
+char_columns <- sapply(df_mat, is.character)
+columns_cat <- names(df_mat)[char_columns]
+
+# Select the numerical values
+
+columns_num <- setdiff(colnames(df_mat), columns_cat)
+columns_num
+
+```
+
+# Task 1
+
+**Disclaimer:\
+**It should be noted that we used the Portuguese class dataset for our
+analysis in Task 1 because 382 students from the Portuguese class are
+also in the Maths class (395 students). Therefore, there should be 382
+duplicates. In reality, only 39 out of 382 duplicates could be
+identified, so we decided to use only the Portuguese class dataset for
+the descriptive statistics analysis. This is not a problem when looking
+at grade-independent variables, as only 13 students who are present in
+the Maths classroom dataset are not also present in the Portuguese
+classroom dataset. A possible reason for not finding duplicates is that
+the survey took place at different times and students changed their
+opinions and information. We only used both data sets when analysing the
+grades (except for the trend analysis).
+
+In order to analyse the key statistics and trends related to student
+demographics, behavior and grades, we assign the different variables to
+the three clusters. Variables are assigned to the cluster to which they
+contribute to.\
+**Demographics:**\
+age, Medu, Fedu, traveltime, famrel, school, sex, address, famsize,
+Pstatus, Mjob, Fjob, guardian, nursery, internet\
+**Behavior:**\
+studytime, freetime, goout, Dalc, Walc, health, absences, schoolsup,
+famsup, paid, activities, romantic, higher\
+**Grades:**\
+failures, G1, G2, G3
+
+## Key statistics of the data set
+
+First, we want to give a general overview by analysing and visualising
+interesting categorical variables of the dataset with the help of
+different graphs. In addition, we will provide insights by visualising
+the numerical variables in the form of box plots to get a deeper insight
+into the data set. We then look at interesting assumptions and findings
+from the first parts of the analysis using a correlation heatmap. This
+allows us to highlight trends within the data in terms of student
+demographics, behavior and grades.
+
+```{r echo=FALSE, fig.align='center', fig.asp=0.7, out.width='60%'}
+
+#Plotting the gender distribution in df_por
+por_gender <- ggplot(df_por, aes(x = sex, fill = sex)) +
+  geom_bar(stat = "count") +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = 2, color = "white") +
+  labs(title = "Gender distribution", x = "Sex", y = "Count") +
+  scale_fill_manual(values = c("F" = primary, "M" = quinary)) + 
+  theme_minimal() +
+  theme(aspect.ratio = 0.4)
+
+print(por_gender)
+```
+
+**Failure Distribution by Gender:**
+
+```{r echo=FALSE, out.width='60%', fig.asp=0.7, fig.align='center'}
+# Analyze the distribution of failures by gender
+failures_distribution <- df_por %>%
+  group_by(sex, failures) %>%
+  summarise(Count = n(), .groups='drop') %>%
+  ungroup()
+
+#create a bar chart for the distribution of failures by gender
+ggplot(failures_distribution, aes(x = as.factor(failures), y = Count, fill = sex)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 1)) +
+  geom_text(aes(label = Count), position = position_dodge(width = 1), vjust = -0.5) +
+  labs(title = "Distribution of Failures by Gender",
+       x = "Number of Failures",
+       y = "Count of Students") +
+  scale_fill_manual(values = c("M" = primary, "F" = quinary)) +
+  theme_minimal()
+
+```
+
+A total of 662 students were interviewed. 13 students were not included
+in the analysis, as explained above. In the overall sample of 649
+students, there are 383 female and 266 male students. Looking at the
+distribution of failures by gender, we can see that most students,
+regardless of gender (549 out of 649), have never failed a course. Here
+the proportion of female students is higher than the proportion of male
+students, which is logical as there are more female students than male
+students overall. It is interesting to note that although the proportion
+of female students in the dataset is higher, more male students have
+already failed 2 or more classes. It is therefore interesting to see
+whether male students actually do worse at school than female students.
+
+**Average Grades by Gender:**
+
+```{r echo=FALSE, out.width='60%', fig.asp=0.7, fig.align='center'}
+# Calculate the average Portuguese grades between genders
+avg_por_grades <- aggregate(G3 ~ sex, df_por, mean)
+
+# Create a bar diagram
+plot_por <- ggplot(avg_por_grades, aes(x=sex, y=G3, fill=sex)) +
+    geom_bar(stat="identity") +
+    geom_text(aes(label=sprintf("%.2f", G3), group=sex),
+              position=position_dodge(width=0.9), vjust=-0.5, size=3) +
+    labs(title="Avg. G3 in Portuguese by Gender", 
+         x="Gender", 
+         y="Average Final Grade (G3)") +
+    scale_fill_manual(values = c("M" = primary, "F" = quinary)) +
+    theme_minimal()
+
+# Calculate the average mathematics grades between genders
+avg_mat_grades <- aggregate(G3 ~ sex, df_mat, mean)
+
+# Create a bar diagram
+plot_mat <- ggplot(avg_mat_grades, aes(x=sex, y=G3, fill=sex)) +
+    geom_bar(stat="identity") +
+    geom_text(aes(label=sprintf("%.2f", G3), group=sex),
+              position=position_dodge(width=0.9), vjust=-0.5, size=3) +
+    labs(title="Avg. G3 in Maths by Gender", 
+         x="Gender", 
+         y="Average Final Grade (G3)") +
+    scale_fill_manual(values = c("M" = primary, "F" = quinary)) +
+    theme_minimal()
+
+
+# Arrange the plots side by side
+grid.arrange(plot_por, plot_mat, ncol=2)
+```
+
+We can see that the female students are actually better on average in
+Portuguese with an average G3 of 12.3 compared to the male students with
+an average G3 of 11.4. On the other hand, male students are on average
+better in Maths with an average G3 of 10.9 compared to female students
+with an average G3 of 10. Looking at this graph, we think that the
+stereotype that girls are better at languages and boys at maths might be
+true. However, in order to make a valid statement about this stereotype,
+we would need to carry out further statistical tests.
+
+**Distribution of Grades by Class:**
+
+```{r echo=FALSE, out.width='60%', fig.asp=0.7, fig.align='center'}
+avg_por <- mean(df_por$G3)
+avg_mat <- mean(df_mat$G3)
+
+# Create ggplot for Portuguese class grades
+por_grades <- ggplot(df_por, aes(x = G3)) +
+  geom_histogram(binwidth = 1, fill = tertiary, color = "black") +
+  geom_vline(xintercept = avg_por, color = "black", linetype = "dashed") +
+  geom_text(aes(x = 15.5, label = sprintf("Avg.: %.2f", avg_por)),
+            y = 103, vjust = -0.5, color = "black", size = 4) +
+  labs(title = "Distribution of Grades in Portuguese", x = "G3", y = "Count") +
+  theme_minimal()+
+  theme(line = element_line(linewidth=1))
+
+# Create ggplot for Maths class grades
+mat_grades <- ggplot(df_mat, aes(x = G3)) +
+  geom_histogram(binwidth = 1, fill = nonary, color = "black") +
+  geom_vline(xintercept = avg_mat, color = "black", linetype = "dashed") +
+  geom_text(aes(x = 14, label = sprintf("Avg.: %.2f", avg_mat)),
+            y = 56, vjust = -0.5, color = "black", size = 4) +
+  labs(title = "Distribution of Grades in Maths", x = "G3", y = "Count") +
+  theme_minimal()+
+  theme(line = element_line(linewidth=1))
+
+# Display plots side by side
+grid.arrange(por_grades, mat_grades, ncol = 2)
+```
+
+Looking at the distribution of the final grades in both classes, we can
+generally see that the final grades are normally distributed around the
+mean, except for the students who have 0 points in their final grade. It
+is interesting to note that the number of students with 0 points is much
+higher in the Maths class than in the Portuguese class, even though
+there are more students in the Portuguese class (649) than in the Maths
+class (395). We can also see that the average final grade of the
+students is higher in the Portuguese class (11.9) than in the Maths
+class (10.4).
+
+```{r fig.align='center', fig.asp=0.7, include=FALSE, out.width='60%'}
+#Distribution of Grades by School:
+#calculate average grades by school and class
+por_G3_by_school <- aggregate(G3 ~ school, df_por, mean)
+mat_G3_by_school <- aggregate(G3 ~ school, df_mat, mean)
+
+#create a plot for the average grade in a portuguese class by school
+por_school <- ggplot(por_G3_by_school, aes(x = school, y = G3, fill = school)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_text(aes(label = sprintf("%.2f", G3)),
+            position = position_dodge(width = 0.9), vjust = -0.5, color = "black", size = 4)   +
+  labs(title = "Avg. Portuguese G3 by school",
+       x = "school",
+       y = "Average G3") +
+  scale_fill_manual(values = c("GP" = secondary, "MS" = septenary)) +
+  theme_minimal()
+
+#create a plot for the average grade in a maths class by school
+mat_school <- ggplot(mat_G3_by_school, aes(x = school, y = G3, fill = school)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_text(aes(label = sprintf("%.2f", G3)),
+            position = position_dodge(width = 0.9), vjust = -0.5, color = "black", size = 4)   +
+  labs(title = "Avg. Maths G3 by school",
+       x = "school",
+       y = "Average G3") +
+  scale_fill_manual(values = c("GP" = secondary, "MS" = septenary)) +
+  theme_minimal()
+
+# Display plots side by side
+grid.arrange(por_school, mat_school, ncol = 2)
+
+#Interestingly, students at Gabriel Pereira (GP) school get better grades than those at Mousinho da Silveira (MS). This is the case for both Portuguese and Maths, although the difference in grades is smaller for Maths. It would be interesting to know why grades depend so much on the school a student attends. One assumption could be that GP is a private school and MS is a public school.
+```
+
+```{r fig.align='center', fig.asp=0.7, include=FALSE, out.width='60%'}
+# Distribution of Motger's Education and Father's Education
+# Use pivot_longer() instead of gather() if you have a newer version of tidyr
+long_df <- pivot_longer(df_por, cols = c(Medu, Fedu), names_to = "variable", values_to = "value")
+
+# Plot the histogram
+ggplot(long_df, aes(x = value, fill = variable)) +
+  geom_histogram(position = "dodge", binwidth = 1) +
+  labs(title = "Distribution of Mother's and Father's Education", x = "Education Level", y = "Count") +
+  theme_minimal() +
+  scale_fill_manual(values = c(primary, quinary))
+
+#Interestingly, one can see that for an educational level of equal to or greater than 3, more mothers than fathers have such a level. In reverse for the educational level smaller than 3. In conclusion, the educational level of the mothers is should be higher than the level of the fathers. This is supported by the visualization of the box plots below.
+```
+
+\newpage Analysis **of numerical variables by using box plots:**
+
+```{r include=FALSE}
+# show the summary of the numerical variables
+summary(df_por[,columns_num])
+```
+
+```{r echo=FALSE, fig.align='center', fig.asp=0.7, out.width='60%'}
+# Create box plots for numeric variables
+par(pin=c(5,5),
+    mfrow=c(3, 3),
+    mar=c(1, 2, 2, 2))
+for (col in columns_num) {
+  boxplot(df_por[[col]], 
+          main = col,
+          col = tertiary,
+          border = dark,
+          cex = 1)
+}
+```
+
+Some interesting statistics can be seen by looking at the box plots and
+the summary values of the numerical variables:
+
+**Age:** The average age of a student is 16.7 years. Half of the
+students are aged 17 or over and half are aged 17 or under. The age of
+the students ranges from 15 to 22 years. The students who are 22 years
+old are outliers in this data set. It might be interesting to see if
+there is a correlation between a student's age and their grades, as well
+as the number of previous classes they have failed, since students who
+have failed a class are usually the oldest in the class.\
+**Mother's & Father's education:** The average education of both parents
+is close to 2.5. This means that the average parent has between 5th and
+9th grade education. Interestingly, 75% of all mothers have an education
+level equal to or higher than 2, but only 50% of all fathers have an
+education level equal to or higher than 2. Supported by the means, we
+see that the education of the mothers is slightly higher than the
+education of the fathers. It would be interesting to see whether the
+parents' education has a positive influence on the students' grades.\
+**Study time:** The average study time is 1.9, which means that the
+average student studies either less than 2 or between 2 and 5 hours per
+week. 75% of students study 2 to 5 hours or less per week. It would be
+interesting to see the correlation between the amount of time students
+spend studying and their grades, as we assume a high correlation here.\
+**Family relationship:** The average quality of family relationships is
+3.9, which indicates a good relationship with the student's family.
+Intuitively, we would assume that the family relationship plays a
+crucial role in a student's performance at school.\
+**Free time:** The average amount of free time after school is 3.2. This
+means that the average student has a moderate amount of free time after
+school. 75% of all students ranked their free time between 3 and 4.\
+**Going out:** The average number of times students go out with friends
+is 3.2. This means that the average student goes out with friends a
+moderate amount. It could be interesting to see if a lower amount of
+going out has a positive effect on a student's grades and a higher
+amount of going out has a negative effect on a student's grades. Another
+assumption is that a student who goes out more has a better social life
+and therefore a better relationship with their family.\
+**Workday alcohol consumption:** The average alcohol consumption per
+workday is 1.5. This means that the average student doesn't drink much
+alcohol on a working day. Students who drink more than 3 on a working
+day are outliers. It might be interesting to see how the alcohol
+consumption is correlated with the final grade and with the student's
+behavior.\
+**Weekend alcohol consumption:** The average weekend alcohol consumption
+is 2.3. This means that the average student drinks more alcohol at the
+weekend than on a workday. In contrast to weekday drinking, 25% of
+students have a weekend drinking score of 3 or higher. Again, it is
+interesting to see the correlation between alcohol consumption and
+grades. And also the correlation with student behavior.\
+**Current health status:** The average current health status is 3.5.
+This is a good indicator that the average student feels healthy. It
+would be interesting to know whether a higher health status has a
+positive effect on grades and whether health status is influenced by
+alcohol consumption.\
+**Number of school absences:** The average number of absences is 3.7.
+This means that the average student is absent for 3 to 4 days per school
+year. As we feel that this is a low number of absences, we don't expect
+the number of absences to have much influence on the other variables
+except health.\
+**Final Grade:** The average final grade (G3) is 11.9. Interestingly,
+the average grade seems to improve slightly as the school year
+progresses.
+
+**Interesting connections within and between the demographic,
+behavioural and grades clusters, which are reviewed using a correlation
+heat map:**
+
+**Behavior:\
+**- Workday/weekend alcohol consumption and other behavior\
+- Health and workday/weekend alcohol consumption\
+- Absences and health
+
+**Behavior & Grades:\
+-** Study time and G3\
+- Workday/weekend alcohol consumption and G3\
+- Health and G3\
+- Going out and G3
+
+**Demographics & Behavior:\
+-** Going out and family relationship
+
+**Demographics & Grades:\
+-** Age and G3\
+- Age and failures\
+- Educational level of parents and G3\
+- Family relationship and G3
+
+## Trends in the data set
+
+In this heatmap we have used the Spearman correlation coefficient
+because we are analysing ordinal scaled variables. The correlations
+given here do not necessarily show a causal relationship between the
+variables, even if there is a relatively high correlation. Further
+research would be needed to prove relationships between the variables.
+Here we simply want to show possible relationships that we have
+identified as interesting in the section above.
+
+```{r echo=FALSE, out.width='70%', fig.asp=0.7, fig.align='center'}
+
+# create a correlation matrix for numerical variables
+df_por_corr_m <- cor(df_por[, sapply(df_por, is.numeric)], method = "spearman")
+df_por_corr_m <- melt(df_por_corr_m)
+
+# Create a heat map with ggplot2
+heatmap <- ggplot(data = as.data.frame(df_por_corr_m), aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = tertiary, mid = "white", high = nonary, midpoint = 0, na.value = "grey50", limits = c(-1,1)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Add correlation coefficients as text
+heatmap_with_cor <- heatmap +
+  geom_text(aes(label = sprintf("%.2f", value)), color = "black", vjust = 0.5, size=2.5)
+
+heatmap_with_cor
+
+```
+
+**Behavior:\
+***Workday/weekend alcohol consumption and other behavior:* The only
+interesting associations with other behavioral variables are a weak
+negative correlation with study time and a moderate positive correlation
+with goout.\
+*Health and workday/weekend alcohol consumption:* Surprisingly, these
+variables are only very weakly correlated, and it is also surprising
+that the correlation is positive. We would have expected a stronger
+negative correlation here, as alcohol is harmful to the human body.\
+*Absences and health:* These variables are almost completely
+uncorrelated. This is surprising, as students are usually absent from
+school for health reasons.
+
+**Behavior & Grades:**\
+*Study time and G3:* There is a low moderate positive correlation
+between the two variables. We expected a stronger correlation here
+because we believe there is a causal relationship between the
+variables.\
+*Workday/weekend alcohol consumption and G3:* The correlations are
+weakly negative, which does not indicate a strong relationship.\
+*Health and G3:* Again, we would have expected a stronger correlation,
+but the variables do not seem to have a strong association.\
+*Going out and G3:* For this applies the same as above. The weak
+negative correlation does not indicate a significant connection between
+these variables.
+
+**Demographics & Behavior:\
+***Going out and family relationship:* We find only a very weak positive
+correlation of 0.09 between the two variables. We therefore assume that
+there is no significant relationship between the amount of going out and
+a student's family relationship.
+
+**Demographics & Grades:\
+***Age and G3:* Interestingly, the correlation between a student's age
+and final grade (G3) is weakly negative. However, as the correlation is
+very weak, we do not assume that there is a relationship between the two
+variables.\
+*Age and failures:* There is a moderate positive correlation of 0.32
+between the variables. There could be a causal relationship, which would
+be logical because students who have to repeat a class are usually older
+than their new classmates.\
+*Educational level of parents and G3:* It can be seen that both (Medu
+and Fedu) are weakly positively correlated with a student's final grade
+(0.24 and 0.21). Again, the correlation is low, so we assume that there
+is only a weak relationship between these variables.\
+*Mother's Educational Level and Father's Educational Level:* We can see
+a moderately strong correlation. This could mean that parents often have
+a similar level of education.\
+*Family relationship and G3:* Surprisingly, the correlation between
+family relationship and final grade is almost 0. This is interesting
+because we assumed that a very good/very bad relationship with one's
+family would have a strong positive/negative association with the
+student's performance at school.
+
+**Most surprising findings:**\
+We think there are some surprises in the data. For example, it is
+interesting that alcohol consumption does not seem to affect students'
+health. It is also surprising that the health situation is not
+correlated with the number of days of absence. We would have expected a
+higher correlation, because our initial thought was that absenteeism is
+usually due to illness. One explanation for the low correlation could be
+that people are usually absent because of minor illnesses and not
+because of serious health problems. A less surprising but very
+interesting finding is that this dataset fulfils the stereotype that
+boys are better at maths and girls at languages (Portuguese). This
+hypothesis would have to be statistically tested to show statistical
+significance.
+
+# Task 2
+
+In this task the goal is to develop a model that predicts the students
+performance.
+
+## Approach
+
+Our approach for this task was to first program a modular machine
+learning pipeline which has the following features:
+
+-   **Data loading** The pipeline loads the two datasets, creates a
+    "is_mat" and "is_por" column and merges the two datasets into one.
+
+-   **Data Preprocessing:** The pipeline preprocesses the data by
+    removing the "G1" and "G2" columns because our target variable is
+    the "G3" variable. One hot encoding the categorical variables is
+    automatically done by the train function of the caret package and
+    therefore not needed here.
+
+-   **Model Training:** The pipeline trains a linear regression model.
+    It uses a parameter that defines which kind of training method
+    should be used. By default the training function "lm" from caret is
+    used which includes a cross validation that is set to 5 by default.
+
+-   **Model Evaluation:** The pipeline evaluates the model by
+    calculating the RMSE, MAE, MSE and the R2 score. Additionally more
+    model selection criteria that are mentioned in the lectures slides
+    are used for the evaluation. Namely the adjusted R2 score, the AIC
+    and the BIC. Finally the pipeline is capable of creating a plot
+    comparing the metrics of different models with each other.
+
+This approach makes our results reproducible and allows for a consistent
+evaluation of the models. Additionally it allows us to easily compare
+different models with each other.
+
+In the following section we will train the models. By looking at the
+p-values of the variables we will decide which variables to remove from
+the model. Following that we will explain why a non linear-regression
+model doesn't fit our data and in the section after, we will compare the
+trained models with each other.
+
+```{r}
+# This section is excluded from the pdf
+# It contains all relevant functions relevant for this section
+# Additionally these functions are used to create the pipeline
+
+# create holdout indizes
+get_holdoutset_indizes <- function(data, seed, proportion = 0.2) {
+  # set seed
+  set.seed(seed)
+  
+  # create holdout set
+  holdout_indices <- sample(1:nrow(data), size = proportion * nrow(data))
+  
+  # return holdout set
+  return(holdout_indices)
+}
+
+train_model_cv <- function(train_data, method="lm", random_seed = 1996, formula="G3 ~ .") {
+  # Check if the formula is a string and convert it to a formula object
+  if (is.character(formula)) {
+    formula <- as.formula(formula)
+  }
+  set.seed(random_seed)
+  
+  model <- train(formula,
+                 data = train_data,
+                 method = method,
+                 trControl = trainControl(method = "cv", number = 5))
+  return(model)
+}
+
+# Function to train a linear regression model using the standard lm function
+train_model_std <- function(train_data, formula="G3 ~ .") {
+  # Check if the formula is a string and convert it to a formula object
+  if (is.character(formula)) {
+    formula <- as.formula(formula)
+  }
+  model <- lm(formula,
+              data = train_data)
+  return(model)
+}
+
+# hyperparameter tune a linear regression model
+train_model_hyperparametertune <- function(train_data, method="glmnet", metric = "MAE", formula = "G3 ~ .", tune_grid = expand.grid(alpha = 0:10/10, lambda = 0:10/10)) {
+  # Check if the formula is a string and convert it to a formula object
+  if (is.character(formula)) {
+    formula <- as.formula(formula)
+  }
+  
+  model <- train(
+    formula,
+    data = train_data,
+    method = method,
+    trControl = trainControl(method = "cv", number = 5),
+    tuneGrid = tune_grid,
+    metric = metric
+  )
+  
+  return(model)
+}
+
+# Function that removes columns from a data frame
+remove_columns <- function(data, columns) {
+  data <- data[, !(colnames(data) %in% columns)]
+  return(data)
+}
+
+# Function that preprocesses the data
+preprocess_data <- function(data, columns_to_keep = c(), remove_columns = c()) {
+  
+  # remove G1, G2 
+  data <- remove_columns(data, c("G1", "G2"))
+  
+  if (length(columns_to_keep) > 0) {
+    data <- data[, columns_to_keep]
+  }
+  # remove the specified columns
+  else if (length(remove_columns) > 0) {
+    data <- remove_columns(data, remove_columns)
+  }
+  
+   # Select the categorical values
+  char_columns <- sapply(data, is.character)
+  columns_cat <- names(data)[char_columns]
+  
+  # Select the numerical values
+  columns_num <- setdiff(colnames(data), columns_cat)
+  columns_num
+  
+  # One hot encode the categorical variables
+  #data <- one_hot_encode(data, columns_cat)
+  
+  return(data)
+}
+
+# Function that creates a plot showing the p values
+plot_p_values <- function(model, model_name = "Model", intercept_line = 0.05) {
+  # Tidy up the model results
+  tidy_lm <- na.omit(tidy(model))
+
+  # Create a bar plot of p-values
+  p_values_plot <- ggplot(tidy_lm, aes(x = term, y = p.value, fill = factor(p.value < intercept_line))) +
+    geom_bar(stat = "identity") +
+    geom_hline(yintercept = intercept_line, linetype = "dashed", color = "red") +
+    coord_flip() +
+    scale_fill_manual(values = c("grey", secondary), labels = c("Not Significant", "Significant")) +
+    theme_minimal() +
+    labs(title = paste("P-values for Coefficients of model:", model_name), x = "Coefficient", y = "P-value") +
+    theme(legend.position = "none") 
+
+  print(p_values_plot)
+}
+
+# Function to evaluate a regression model
+evaluate_regression_model <- function(model, test_data, target_variable = "G3") {
+  predictions <- predict(model, newdata = test_data)
+  
+  # initialize evaluation result
+  evaluation_result <- list()
+  
+  # Calculate R-squared
+  evaluation_result$r_squared <- cor(predictions, test_data[[target_variable]])^2
+  
+  # Calculate Mean Absolute Error (MAE)
+  evaluation_result$mae <- mean(abs(predictions - test_data[[target_variable]]))
+  
+  # Calculate Mean Squared Error (MSE)
+  evaluation_result$mse <- mean((predictions - test_data[[target_variable]])^2)
+  
+  # Calculate Root Mean Squared Error (RMSE)
+  evaluation_result$rmse <- sqrt(evaluation_result$mse)
+  
+  # Calculate BIC
+  evaluation_result$bic <- BIC(model)
+  
+  # Calculate AIC
+  evaluation_result$aic <- AIC(model)
+  
+  # Calculate Adjusted R-squared
+  evaluation_result$adjusted_r_squared <- summary(model)$adj.r.squared
+  
+  return(evaluation_result)
+}
+
+# Function that plots the residuals of the model and the predicted vs. actual values.
+plot_model_evaluation <- function(model, test_data, target_variable = "G3") {
+  predictions <- predict(model, newdata = test_data)
+  
+  # Plot the residuals
+  plot(predictions, test_data[[target_variable]] - predictions, xlab = "Predictions", ylab = "Residuals")
+  
+  # Plot the predicted vs. actual values
+  plot(predictions, test_data[[target_variable]], xlab = "Predictions", ylab = "Actual Values")
+}
+
+# Main pipeline function
+run_pipeline_std <- function(random_seed = 1996, test_proportion = 0.3, columns_to_keep = c(), remove_columns = c()) {
+  # Load data
+  raw_data <- load_problemset1_data()
+
+  # preprocess the data
+  raw_data <- preprocess_data(raw_data, columns_to_keep = columns_to_keep, remove_columns = remove_columns)
+  
+  # get indizes of holdout indizes
+  holdout_indices <- get_holdoutset_indizes(raw_data, seed = random_seed, proportion = test_proportion)
+  # Create the holdout set
+  holdout_set <- raw_data[holdout_indices, ]
+  # Create the training set
+  training_set <- raw_data[-holdout_indices, ]
+
+  # Train model
+  model <- train_model_std(training_set)
+  
+  # Evaluate model
+  evaluation_result <- evaluate_regression_model(model, holdout_set)
+  print(paste("RMSE:", evaluation_result$rmse))
+  print(paste("MAE:", evaluation_result$mae))
+  print(paste("R-squared:", evaluation_result$r_squared))
+  print(paste("MSE:", evaluation_result$mse))
+  print(paste("AIC:", evaluation_result$aic))
+  print(paste("BIC:", evaluation_result$bic))
+  print(paste("Adjusted R-squared:", evaluation_result$adjusted_r_squared))
+  
+  return(list(model = model, evaluation_result = evaluation_result))
+}
+
+run_pipeline_cv <- function(data, show_output=TRUE, method="lm", random_seed = 1996, columns_to_keep = c(), remove_columns = c()) {
+  # Load data
+  raw_data <- data
+
+  # preprocess the data
+  raw_data <- preprocess_data(raw_data, columns_to_keep = columns_to_keep, remove_columns = remove_columns)
+  
+  # Train model
+  cv_result <- train_model_cv(raw_data, method=method, random_seed=random_seed)
+  
+  # print evaluation
+  if(show_output) {
+    cat("RMSE:", mean(cv_result$results$RMSE), "\n")
+    cat("MAE:", mean(cv_result$results$MAE), "\n")
+    cat("R-squared:", mean(cv_result$results$Rsquared), "\n")
+    cat("MSE:", mean(cv_result$results$RMSE^2), "\n")
+  }
+  
+  # Calculate BIC and AIC and adjusted R-squared for final model
+  cv_result$finalModel$bic <- BIC(cv_result$finalModel)
+  cv_result$finalModel$aic <- AIC(cv_result$finalModel)
+  cv_result$finalModel$adjr2 <- summary(cv_result$finalModel)$adj.r.squared
+  if(show_output) {
+    cat("BIC:", cv_result$finalModel$bic, "\n")
+    cat("AIC:", cv_result$finalModel$aic, "\n")
+    cat("Adjusted R-squared:", mean(cv_result$finalModel$adjr2), "\n")
+  }
+  return(list(cv_result = cv_result))
+}
+
+run_pipeline_hyperparametertune <- function(method="glmnet", random_seed = 1996, metric = "MAE", formula = "G3 ~ .", tune_grid = expand.grid(alpha = 0:10/10, lambda = 0:10/10), columns_to_keep = c(), remove_columns = c()) {
+  # Load data
+  raw_data <- load_problemset1_data()
+
+  # preprocess the data
+  raw_data <- preprocess_data(raw_data, columns_to_keep = columns_to_keep, remove_columns = remove_columns)
+  
+  # Train model
+  cv_result <- train_model_hyperparametertune(raw_data, method=method, metric = metric, formula = formula, tune_grid = tune_grid)
+  
+  # print evaluation
+  cat("RMSE:", mean(cv_result$results$RMSE), "\n")
+  cat("MAE:", mean(cv_result$results$MAE), "\n")
+  cat("R-squared:", mean(cv_result$results$Rsquared), "\n")
+  cat("MSE:", mean(cv_result$results$RMSE^2), "\n")
+  
+  # Calculate BIC and AIC and adjusted R-squared for final model
+  #cv_result$finalModel$bic <- BIC(cv_result$finalModel)
+  
+  
+  # Calculate BIC manually for final model
+  n <- nrow(raw_data)
+  k_bic <- sum(cv_result$finalModel$df > 0)  # Count non-zero coefficients as parameters
+  log_likelihood_bic <- -0.5 * sum((cv_result$finalModel$residuals)^2)  # Assuming Gaussian errors
+  
+  cv_result$finalModel$bi <- -2 * log_likelihood_bic + k_bic * log(n)
+  
+  # Calculate AIC manually for final model
+  k_aic <- k_bic  # For simplicity, assuming the same number of parameters for AIC
+  log_likelihood_aic <- -0.5 * sum((cv_result$finalModel$residuals)^2)  # Assuming Gaussian errors
+  
+  cv_result$finalModel$aic <- 2 * k_aic - 2 * log_likelihood_aic
+  
+  #cv_result$finalModel$aic <- AIC(cv_result$finalModel)
+  cv_result$finalModel$adjr2 <- summary(cv_result$finalModel)$adj.r.squared
+  
+  cat("BIC:", cv_result$finalModel$bic, "\n")
+  cat("AIC:", cv_result$finalModel$aic, "\n")
+  cat("Adjusted R-squared:", mean(cv_result$finalModel$adjr2), "\n")
+  
+  return(list(cv_result = cv_result))
+}
+
+```
+
+## Training
+
+In this section we will be training different models using the pipeline
+structure mentioned before. The goal is to create a model with great
+performance in predicting the performance of a students final grade
+(G3). In the following
+
+```{r}
+# prepare data frame that contains the results
+# with column names: model_name, rmse, mae, r_squared, mse, aic, bic, adjusted_r_squared
+# This data frame will be used to store all relevant evaluations from the models
+# that are following.
+results <- data.frame(
+  model_name = character(),
+  rmse = numeric(),
+  mae = numeric(),
+  r_squared = numeric(),
+  mse = numeric(),
+  aic = numeric(),
+  bic = numeric(),
+  adjusted_r_squared = numeric()
+)
+
+# function that inputs data into the results data frame without 
+# changing the names of the columns
+add_result <- function(df, input) {
+  df <- rbind(df, setNames(as.data.frame(t(input)), colnames(df)))
+  return(df)
+}
+
+```
+
+First of all we will train a linear regression model using all the
+columns of the dataset. A quick summary about the results from the model
+can be seen below. \small
+
+```{r}
+# run a pipeline including all columns but G1 and G2
+lm.full <- run_pipeline_cv(data=load_problemset1_data(), random_seed = 1996)
+```
+
+\normalsize
+
+In summary we can see that the model has some explanatory power which is
+indicated by the r-squared and adjusted r-squared but the errors (RMSE,
+MAE, MSE) are relatively high. We will have a more in depth comparison
+at the bottom of this section where we will compare the results of all
+the models we trained.
+
+```{r include=FALSE}
+results <- add_result(results, 
+                      c("lm.full", 
+                        mean(lm.full$cv_result$results$RMSE), 
+                        mean(lm.full$cv_result$results$MAE), 
+                        mean(lm.full$cv_result$results$Rsquared), 
+                        mean(lm.full$cv_result$results$RMSE)^2, 
+                        lm.full$cv_result$finalModel$aic, 
+                        lm.full$cv_result$finalModel$bic, 
+                        lm.full$cv_result$finalModel$adjr))
+```
+
+```{r echo=FALSE, fig.width=6, fig.height=4}
+plot_p_values(lm.full$cv_result$finalModel, model_name = "lm-model-full", intercept_line = .05)
+```
+
+The plot above shows the p-values of the coefficients of the linear
+regression model. The p-values are a measure of the significance of the
+coefficients. The lower the p-value the more significant is the
+coefficient. The plot shows that most of the features are not
+significant.
+
+One additional finding we had, was that using different kinds of random
+seeds drastically influenced the p-values of the model. To solve this
+issue we applied cross validation which stabilized the values.
+
+Features with a significance level of 0.05 or lower are:
+
+-   **studytime**: Which is a feature we expected to be of importance
+    for the final grade. It indicates the weekly study time of the
+    student and therefore is expected to impact the final grade.
+
+-   **schoolsup**: This feature also makes sense, as it indicates
+    whether the student received extra educational support or not.
+
+-   **school**: This is a interesting and unexpected find. The
+    significance of the school feature seems to suggest to have an
+    impact on the final grade. Therefore the performance of the schools
+    seem to vary.
+
+-   **romantic**: The significance of this feature is less than the
+    other features mentioned. However there is a indication that the
+    romantic relationship of the student is a indicator for the final
+    grade.
+
+-   **Mjob**: This is another unexpected feature to have a significance.
+    Especially whether the father is working in a health related field
+    or not seems to impact the prediction performance of the model
+    regarding the final grade.
+
+-   **is_mat**: Whether the student is enrolled in the mathematics
+    course or not seems to be a good indicator for the final grade. This
+    is a interesting find as it would suggest that a good portion of
+    variance is explained by the course the student is enrolled in. This
+    could be due to the fact that the mathematics course is more
+    difficult than the portuguese course.
+
+-   **higher**: Whether the student wants to take higher education or
+    not is also a good indicator for the final grade. Logically this
+    makes sense as students that want to take higher education are more
+    likely to be motivated to get good grades.
+
+-   **health**: The health of the student is also a good indicator for
+    the final grade. This is also a logical find as students that are in
+    good health are more likely to have a higher final grade.
+
+-   **goout**: The going out habits of the student is also a good
+    indicator for the final grade. We already expected this feature to
+    have an impact on the performance grades of the students.
+
+-   **failures**: The number of past class failures is also a good
+    indicator for the final grade. This is also a logical find as
+    students that failed in the past are more likely to have a lower
+    final grade.
+
+In the next step we will remove the columns that have a p-value \> 0.05
+and run the pipeline again. \small
+
+```{r}
+columns_to_keep = c("school", "studytime", "failures", "schoolsup", 
+                    "higher", "romantic", "health", "is_mat", "G3", 
+                    "Mjob", "goout")
+lm.lower.05 <- run_pipeline_cv(data=load_problemset1_data(), 
+                               columns_to_keep = columns_to_keep)
+
+```
+
+\normalsize
+
+```{r include=FALSE}
+# add the results
+results <- add_result(results, c("lm.lower.05", 
+                                 mean(lm.lower.05$cv_result$results$RMSE), 
+                                 mean(lm.lower.05$cv_result$results$MAE), 
+                                 mean(lm.lower.05$cv_result$results$Rsquared), 
+                                 mean(lm.lower.05$cv_result$results$RMSE)^2, 
+                                 lm.lower.05$cv_result$finalModel$aic, 
+                                 lm.lower.05$cv_result$finalModel$bic, 
+                                 lm.lower.05$cv_result$finalModel$adjr))
+```
+
+Having a quick look at the results we can see similar results to the
+full model. As mentioned already, we will have a more in depth look
+comparing all models following below.
+
+#### Testing out the performance of single features
+
+In this section we wanted to try out how models are performing when only
+one feature is used. We will use the same pipeline as before but only
+use one feature at a time. The results will be interpreted in the
+evaluation section below. \small
+
+```{r}
+lm.studytime <- run_pipeline_cv(show_output=FALSE, 
+                                data=load_problemset1_data(), 
+                                columns_to_keep = c("studytime", "G3"))
+lm.higher <- run_pipeline_cv(show_output=FALSE, 
+                             data=load_problemset1_data(), 
+                             columns_to_keep = c("higher", "G3"))
+lm.failures <- run_pipeline_cv(show_output=FALSE, 
+                               data=load_problemset1_data(), 
+                               columns_to_keep = c("failures", "G3"))
+lm.schoolsup <- run_pipeline_cv(show_output=FALSE, 
+                                data=load_problemset1_data(), 
+                                columns_to_keep = c("schoolsup", "G3"))
+lm.is_mat <- run_pipeline_cv(show_output=FALSE, 
+                             data=load_problemset1_data(), 
+                             columns_to_keep = c("is_mat", "G3"))
+```
+
+\normalsize
+
+```{r include = FALSE}
+# add to results
+results <- add_result(results, c("lm.studytime", 
+                                 mean(lm.studytime$cv_result$results$RMSE), 
+                                 mean(lm.studytime$cv_result$results$MAE), 
+                                 mean(lm.studytime$cv_result$results$Rsquared), 
+                                 mean(lm.studytime$cv_result$results$RMSE)^2, 
+                                 lm.studytime$cv_result$finalModel$aic, 
+                                 lm.studytime$cv_result$finalModel$bic, 
+                                 lm.studytime$cv_result$finalModel$adjr))
+results <- add_result(results, c("lm.higher", 
+                                 mean(lm.higher$cv_result$results$RMSE), 
+                                 mean(lm.higher$cv_result$results$MAE), 
+                                 mean(lm.higher$cv_result$results$Rsquared), 
+                                 mean(lm.higher$cv_result$results$RMSE)^2, 
+                                 lm.higher$cv_result$finalModel$aic, 
+                                 lm.higher$cv_result$finalModel$bic, 
+                                 lm.higher$cv_result$finalModel$adjr))
+results <- add_result(results, c("lm.failures", 
+                                 mean(lm.failures$cv_result$results$RMSE), 
+                                 mean(lm.failures$cv_result$results$MAE), 
+                                 mean(lm.failures$cv_result$results$Rsquared), 
+                                 mean(lm.failures$cv_result$results$RMSE)^2, 
+                                 lm.failures$cv_result$finalModel$aic, 
+                                 lm.failures$cv_result$finalModel$bic, 
+                                 lm.failures$cv_result$finalModel$adjr))
+results <- add_result(results, c("lm.schoolsup", 
+                                 mean(lm.schoolsup$cv_result$results$RMSE), 
+                                 mean(lm.schoolsup$cv_result$results$MAE), 
+                                 mean(lm.schoolsup$cv_result$results$Rsquared), 
+                                 mean(lm.schoolsup$cv_result$results$RMSE)^2, 
+                                 lm.schoolsup$cv_result$finalModel$aic, 
+                                 lm.schoolsup$cv_result$finalModel$bic, 
+                                 lm.schoolsup$cv_result$finalModel$adjr))
+results <- add_result(results, c("lm.is_mat", 
+                                 mean(lm.is_mat$cv_result$results$RMSE), 
+                                 mean(lm.is_mat$cv_result$results$MAE), 
+                                 mean(lm.is_mat$cv_result$results$Rsquared), 
+                                 mean(lm.is_mat$cv_result$results$RMSE)^2, 
+                                 lm.is_mat$cv_result$finalModel$aic, 
+                                 lm.is_mat$cv_result$finalModel$bic, 
+                                 lm.is_mat$cv_result$finalModel$adjr))
+
+  
+```
+
+#### About non linear regression
+
+The two models above were linear regression models. Another possibility
+for a regression model that was mentioned in the lecture is a non linear
+regression model. But looking at our data, we can see that we have no
+continuous variables. All features are either binary or categorical. As
+mentioned in the lecture, looking for a non linear relation in a binary
+case doesn't make much sense. Because categorically encoded features are
+also binary encoded through one-hot encoding we are not expecting a non
+linear regression model to perform better than a linear regression
+model.
+
+#### Nuisance variables
+
+Next we wanted to try out the effects of nuisance variables on the
+model. For this we added 20 random variables to the data and ran the
+pipeline.
+
+```{r, out.width='50%', fig.asp=0.7, fig.align='center'}
+data <- load_problemset1_data()
+seed = 1996
+amount_to_add = 20
+columns_to_keep_nuisance <- columns_to_keep
+# we add nuisance variables to the data
+for (i in 1:amount_to_add) {
+  set.seed(seed + i)
+  
+  # Create a new column name dynamically
+  new_col_name <- paste("Nuisance", i, sep = ".")
+  
+  # Add the new column with random values to the existing data
+  data[[new_col_name]] <- rnorm(nrow(data))
+  columns_to_keep_nuisance <- c(columns_to_keep_nuisance, new_col_name)
+}
+lm.nuisance <- run_pipeline_cv(data=data, columns_to_keep = columns_to_keep_nuisance)
+
+```
+
+```{r include=FALSE}
+# add the results
+results <- add_result(results, c("lm.nuisance", 
+                                 mean(lm.nuisance$cv_result$results$RMSE), 
+                                 mean(lm.nuisance$cv_result$results$MAE), 
+                                 mean(lm.nuisance$cv_result$results$Rsquared), 
+                                 mean(lm.nuisance$cv_result$results$RMSE)^2, 
+                                 lm.nuisance$cv_result$finalModel$aic, 
+                                 lm.nuisance$cv_result$finalModel$bic, 
+                                 lm.nuisance$cv_result$finalModel$adjr))
+```
+
+## Evaluation
+
+In this section we will evaluate the models that were trained in the
+training section.
+
+```{r echo=FALSE}
+# Reshape data to long format
+df_long <- gather(results, key = "metric", value = "value", -model_name)
+# Convert the 'value' column to numeric
+df_long$value <- as.numeric(df_long$value)
+
+colors <- c(primary, secondary, tertiary, quaternary, quinary, senary, septenary, octonary, nonary, denary)
+
+
+# Split data into two data frames
+df_half1 <- df_long[df_long$metric %in% c("rmse", "mae", "mse"), ]
+df_half2 <- df_long[df_long$metric %in% c("r_squared", "adjusted_r_squared"), ]
+df_half3 <- df_long[df_long$metric %in% c("aic", "bic"),]
+
+# Plot for the first half of metrics
+p1 <- ggplot(df_half1, aes(x = model_name, y = value, fill = model_name)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = round(value, 3)), vjust = -0.5) +  # Add data labels
+  scale_fill_manual(values = colors) +
+  facet_wrap(~metric, scales = "free_y", ncol = 1) +
+  theme_minimal() +
+  labs(x = "Model", y = "Metric Value") +
+  scale_y_continuous(labels = scales::label_number(), limits = c(0, max(df_half1$value) * 1.2)) +
+  theme(axis.text.x = element_blank())  # Remove x-axis text
+
+
+# Plot for the second half of metrics
+p2 <- ggplot(df_half2, aes(x = model_name, y = value, fill = model_name)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = round(value, 3)), vjust = -0.5) +  # Add data labels
+  scale_fill_manual(values = colors) +
+  facet_wrap(~metric, scales = "free_y", ncol = 1) +
+  theme_minimal() +
+  labs(x = "Model", y = "Metric Value") +
+  scale_y_continuous(labels = scales::label_number(), limits = c(0, max(df_half2$value) * 1.1)) +
+  theme(axis.text.x = element_blank())  # Remove x-axis text
+
+p3 <- ggplot(df_half3, aes(x = model_name, y = value, fill = model_name)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = round(value, 1)), vjust = -0.5) +  # Add data labels
+  scale_fill_manual(values = colors) +
+  facet_wrap(~metric, scales = "free_y", ncol = 1) +
+  theme_minimal() +
+  labs(x = "Model", y = "Metric Value") +
+  scale_y_continuous(labels = scales::label_number(), limits = c(0, max(df_half3$value) * 1.1)) +
+  theme(axis.text.x = element_blank())  # Remove x-axis text
+```
+
+```{r echo=FALSE, out.width='65%', fig.asp=0.7, fig.align='center'}
+print(p1)
+```
+
+Looking at the first plot we can see the metrics MAE, MSE and RMSE. For
+all those metrics the lower the value the better the model. We can see
+that for each of the models above the values are relatively similar. The
+full model (lm.full) which included all the features performed almost as
+good as the model with only features with a significant p-value
+(lm.lower.05). Even the models which only contained single features had
+a comparable performance when looking at the scores above.
+
+```{r echo=FALSE, out.width='65%', fig.asp=0.7, fig.align='center'}
+print(p2)
+```
+
+When looking at the plot showing the R-squared and adjusted R-squared
+values the distribution changes. Here the higher the value the better
+the model. The best performing model is the lm.lower.05 model which only
+contains features with a significant p-value. Still the performance is
+only slightly better than the full model (lm.full) which contains all
+the features. The nuisance model contains additional features that are
+randomly generated. Still the performance stays almost the same
+suggesting a robust model. The single feature models perform worse than
+the other models. But interestingly the lm.failures model which only
+contains the failures feature has a relatively good performance, even
+though it contains only one value. This suggests that the past failures
+of a student has a great impact in the prediction of the final grade.
+
+```{r echo=FALSE, out.width='65%', fig.asp=0.7, fig.align='center'}
+print(p3)
+```
+
+The last plot shows the AIC and BIC values. The lower the value the
+better the model. Here we can see that the lm.lower.05 model has the
+lowest AIC and BIC but only by a small margin. Overall the values for
+every model is very similar. Comparing the AIC and BIC values to the
+R-squared and adjusted R-squared values we can see the same trend. The
+lm.lower.05 is the best performing model overall while the lm.failures
+model has a good performance for a single feature model.
+
+## Performance prediction on fictive data
+
+In this section we will create two student profiles and predict their
+final grade using the best performing model (lm.lower.05).
+
+Looking at the results from above we can see which of the features have
+a high impact on the final grade. Furthermore we created four single
+feature models which showed that the most important feature is the
+failures feature. To confirm this we will create two nearly identical
+student profiles. The only difference between the two profiles is that
+one student has failed in the past while the other student has not. We
+hypothesize that the student who has failed in the past will have a
+significantly lower final grade predicted than the other nearly
+identical student.
+
+In the following we describe the student profiles:
+
+**Student Best**: This student we expect to have the best performance of
+all the student profiles we create. We try to give him the best possible
+conditions for a good grade. By the results we learned in this task the
+best school is "MS". Obviously studytime should be high so we set it to
+"4". Failures should have the highest impact on the final grade. This
+student should have "0" past failures. We also set schoolsup to "no" as
+this should indicate that the student doesn't need additional support
+from the school. Higher should be set to "yes" as this should indicate
+that the student wants to pursue higher eduction and therefore give him
+motivation for getting better grades. Romantic should be set to "no".
+This was the most interesting for us as we thought that the relationship
+should have no impact on the final grade. The health of the student
+should be good so we set it to "4". The grades of the math course are
+lower than the grades of the portuguese course so we set is_mat to "0".
+The goout value should be low as this should indicate that the student
+is not distracted by going out with friends.
+
+**Student Best Alternative**: This student is an alternative to the best
+student with only one difference. This student has failed in the past.
+With this profile we want to verify our hypothesis that the failures
+feature has the highest impact on the final grade. We expect this
+student to have a lower predicted final grade than the best student but
+still better than the worst student
+
+**Student Worst**: This student we expect to have the worst performance
+of all the student profiles we create. We try to give him the worst
+possible conditions for a good grade. ALl the features are set to the
+opposite of the best student.
+
+```{r echo=FALSE}
+# Create fictive data with the columns of the best performing model
+test_profiles <- data.frame(
+  school = c("MS", "MS", "GP"),
+  studytime = c(4, 4, 1),
+  failures = c(0, 4, 4),
+  schoolsup = c("no", "no", "no"),
+  higher = c("yes","yes", "no"),
+  romantic = c("no", "no", "yes"),
+  health = c(4, 4, 1),
+  is_mat = c(0, 0, 1),
+  Mjob = c("health", "health", "services"),
+  goout = c(1, 1, 5)
+)
+
+# predict the final grade of the two students
+predictions <- predict(lm.lower.05, test_profiles)
+test_profiles$predictions <- predictions$cv_result
+test_profiles$profile_name <- c("Student Best", "Student Best.alt", "Student Worst")
+print(test_profiles)
+
+```
+
+Looking at the results we can see that our hypothesis was confirmed. The
+student who has failed in the past has a lower predicted final grade
+than the best student by a large margin. Also every student profile has
+a prediction that we expected.
+
+# Task 3
+
+First of all we decided to only use the data of the portuguese language
+course, since 382 students are in both courses and the math courses only
+has data for 395 students. So by choosing only the language course data
+we only lose the information from 13 students.
+
+```{r include=FALSE}
+#load data
+dataporg <- read.csv("Material/data/raw/student-por.csv", sep = ";")
+```
+
+First we create a measurement for overall alcohol consumption: Oalc =
+Walc + Dalc We just decided to add these two values for the final
+measurement.
+
+```{r include=FALSE}
+# create overall alcohol measurement
+dataporg$Oalc <- dataporg$Walc + dataporg$Dalc
+```
+
+## Create a basic model
+
+First we thought about which variables are probably influencing the
+alcohol consumption of the students. After that we came up with the
+following variables we wanted to test.
+
+**Number of absences:** Because this could be a measure how serious a
+student takes his studies, so we would expect that with a raising number
+of absences, the alcohol consumption increases.\
+**How often the students go out with their friends:** Since a lot of
+young people like to drink alcohol when going out with friends, our idea
+is that when students go out more often they drink more alcohol.\
+**How much they study:** This shows how much effort a student puts into
+his studies and again could be a sign how invested the student is. So
+again we would hypothesize that the alcohol consumption decreases when
+study time goes up.\
+**Their gender:** Drinking habits are often different between woman and
+man, so we would expect that male students in general drink more alcohol
+than female students.\
+**The relationship with the family:** Alcohol is often abused when
+people are frustrated. So we would expect that alcohol consumption
+increases when the relationship to the family is not that close.\
+**Address:** Often drinking habits differ between rural and urban area,
+for example because of the different possibilities when going out.\
+**Age:** We also want to include the age variable since some students a
+to young to drink legally. So we would expect that alcohol consumption
+increases with age.\
+**Freetime:** We would also expect that freetime has a effect on alcohol
+consumption because simply when someone has more freetime the person
+also has more time for drinking alcohol.\
+**Guardian:** We would expect a difference of drinking habits when the
+father is the guardian, compared to when the mother is the guardian.
+This relies on the idea that there are different drinking habits between
+woman and man. And since students look up to their guardian, their
+behavior could maybe also influence the student.
+
+For testing this model first we have to create 4 binary variables:
+
+-   male (1, when the student is a male, else 0)
+
+-   addressurban (1, when the student lives in an urban area, else 0)
+
+-   guardianmother (1, when the mother is the guardian, else 0)
+
+-   guardianfather (1, when the father is the guardian, else 0)
+
+```{r include=FALSE}
+#creating binary variables
+dataporg$male <- ifelse(dataporg$sex == "M", 1, 0)
+dataporg$addressurban <- ifelse(dataporg$address == "U", 1, 0)
+dataporg$guardianmother <- ifelse(dataporg$guardian == "mother", 1, 0)
+dataporg$guardianfather <- ifelse(dataporg$guardian == "father", 1, 0)
+```
+
+When we run this model, we get the following results:
+
+```{r echo=FALSE, out.width='70%', fig.asp=0.7, fig.align='center'}
+#regression model
+modelbasicexploration <- lm(Oalc ~ absences + goout +  studytime + male + famrel + addressurban + guardianmother + guardianfather + age, data = dataporg)
+summary(modelbasicexploration)
+```
+
+By looking at the p-values we can derive that only absences, goout,
+studytime, male & famrel are significant. Because we want to test a
+interaction effect which includes the address component (Hypothesis 2),
+we also keep the address variable and only delete the two variables
+referring to the guardian of the student.
+
+Because we also got a hypothesis for an interaction effect which
+includes if a student wants to take higher education (Hypothesis 3) we
+also added a binary variable to the model which takes the value 1, if
+the student aims for higher education and else 0.
+
+```{r Binary, include=FALSE}
+#binary variable higher education
+dataporg$higherbinary <- ifelse(dataporg$higher == "yes",1,0 )
+```
+
+The final regression model than has the following results:
+
+```{r echo=FALSE, out.width='70%', fig.asp=0.7, fig.align='center'}
+#regression model
+modelbasic2 <- lm(Oalc ~ absences + goout +  studytime + male + famrel + addressurban + age + higherbinary, data = dataporg)
+summary(modelbasic2)
+```
+
+Now the age variable is not significant on the 5% level anymore, so we
+also deleted it from the model. So the results for the final model for
+testing the interaction effects than looks like this:
+
+```{r echo=FALSE, out.width='70%', fig.asp=0.7, fig.align='center'}
+#regression model
+modelbasicfinal <- lm(Oalc ~ absences + goout +  studytime + male + famrel + addressurban + higherbinary, data = dataporg)
+summary(modelbasicfinal)
+```
+
+So our final model includes 7 variables and the value for the adjusted
+R-squared is 27,93%.
+
+## 1. Hypothesis
+
+The effect of going out on the alcohol consumption depends on the gender
+of the student. Directly speaking men tend to drink more alcohol when
+going out with friends compared to women. So we assume there is an
+interaction effect, between the goout variable and the gender variable.
+
+### Step 1 - Mean centering
+
+Since for the gender variable the zero value is easily interpretable
+(just means the student is a woman), we only need to mean center the
+variable which indicates how often the student goes out with friends.
+
+```{r Mean centering, echo=FALSE}
+#Mean centering goout
+dataporg$gooutMC <- dataporg$goout - mean(dataporg$goout)
+```
+
+### Step 2 - Calculating the interaction effect
+
+Not required when using R.
+
+### Step 3 - Analyze basic model
+
+As seen above in the basic model 5 variables had a significant effect on
+the drinking behavior and the value for the adjusted R-squared is
+27,93%.
+
+### Step 4 - Analyze full model
+
+When we run the same model with the interaction effect included, we get
+the following regression analysis:
+
+```{r Full model, echo=FALSE, out.width='70%', fig.asp=0.7, fig.align='center'}
+#regression model with interaction effect
+modelinteraction1 <- lm(Oalc ~ absences + gooutMC  +  studytime + male + famrel + higherbinary + addressurban + gooutMC:male, data = dataporg)
+summary(modelinteraction1)
+```
+
+When we run the analysis, we can derive from the p-value that the
+interaction term between going out and living in an urban area us
+significant at the 0,1% level. The value for the adjusted R-squared is
+now 31,02%.
+
+### Step 5 - Testing the interaction
+
+First of all we can see by looking at the p-value that the interaction
+term of going out and being a male is significant to the 0,1% level.
+
+F-Test for R-squared-differences:
+
+H0: no difference between the models\
+H1: models are different
+
+```{r echo=FALSE, out.width='70%', fig.asp=0.7, fig.align='center'}
+#F-Test
+anova_results <- anova(modelinteraction1, modelbasicfinal)
+print(anova_results)
+```
+
+This analysis leads in a F-value of 29,745. The corresponding p-value
+shows that there is a significant difference between the two models.
+This can also be seen by visualizing the interaction effect:
+
+```{r echo=FALSE , results = 'hide' , out.width='70%', fig.asp=0.7, fig.align='center'}
+#interaction effect plot
+
+dataporg$Prediction_interaction_fullmodel <- 4.96582  + 0.31528*(dataporg$gooutMC + mean(dataporg$goout)) +  1.22201*dataporg$male + 0.61835*dataporg$male*(dataporg$gooutMC + mean(dataporg$goout))
+# Laden der ggplot2-Bibliothek (falls nicht bereits geladen)
+library(ggplot2)
+
+# Erstelle den Plot
+ggplot(dataporg, aes(x = goout, y = Prediction_interaction_fullmodel, color = factor(sex))) +
+  geom_line(aes(group = sex), linetype = "solid") +
+  labs(x = "Going out", y = "Alcohol consumption", color = "Geschlecht") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  scale_color_manual(values = c("F" = "red", "M" = "blue")) +
+  guides(color = guide_legend(title = "Gender"))
+
+
+```
+
+### Interpretation
+
+The results implicate that there is an ordinal interaction effect
+between gender and going out. This means that a male student drinks more
+alcohol when going out often than a female student. Even though male
+students seem to have a general higher alcohol consumption than female
+students, this effect is amplified when the student often goes out.
+
+So one suggestion for policymakers could be that they should focus male
+students when doing a alcohol prevention program. To target them when
+they go out an idea could be that they create information desk at places
+students like to go out. This desk should be more attractive for male
+students, for example by giving small rewards to male students who visit
+the desk.
+
+Another suggestion could be an information event for male students at
+which they are educated about drinking habits when going out and
+responsable drinking in general. This could maybe also include something
+like a alcohol tracker which is given to the students so that they are
+able to monitor their own alcohol consumption when going out. This could
+maybe help them to decide whether to get another drink when going out or
+not.
+
+## 2. Hypothesis
+
+The 2nd hypothesis we had is that the effect of going out on alcohol
+consumption depends on whether the student lives in a urban or rural
+area. We would expect that in rural areas the effect of going out on
+alcohol consumption is lower, simply because of the different nightlife
+options, which should be higher in urban areas.
+
+### Step 1 - Mean centering
+
+For that we also only have to mean center the variable "goout" which we
+already done when testing the 1. Hypothesis.
+
+### Step 2 - Computing the interaction term
+
+Not necessary when using R.
+
+### Step 3 - Analyze basic model
+
+As seen above in the basic model 5 variables had a significant effect on
+the drinking behavior and the value for the adjusted R-squared is
+27,93%.
+
+### Step 4 - Analyze full model
+
+```{r echo=FALSE , out.width='70%', fig.asp=0.7, fig.align='center'}
+#model with interaction effect
+modelinteraction2 <- lm(Oalc ~ absences + gooutMC  +  studytime + male + famrel + addressurban + higherbinary + gooutMC:addressurban, data = dataporg)
+summary(modelinteraction2)
+```
+
+When we run the analysis, we can derive from the p-value that the
+interaction term between going out and living in an urban area is only
+significant at the 10% level. The value for the adjusted R-squared is
+now 28,24%.
+
+### Step 5 - Testing the interaction
+
+First of all we can see by looking at the p-value that the interaction
+term of going out and living in an urban area is only significant to the
+10% level.
+
+F-Test for R-squared-differences:
+
+H0: no difference between the models\
+H1: models are different
+
+```{r echo=FALSE, , out.width='70%', fig.asp=0.7, fig.align='center'}
+#F-Test
+anova_results2 <- anova(modelinteraction2, modelbasicfinal)
+print(anova_results2)
+```
+
+By looking at the p-value we cant reject H0 at the 5% level so this test
+would suggest that the interaction term does not bring significant value
+to the regression model.
+
+```{r echo=FALSE , results = 'hide', out.width='70%', fig.asp=0.7, fig.align='center'}
+#interaction effect plot
+
+dataporg$Prediction_interaction2_fullmodel <- 5.01670 + 0.41719*(dataporg$gooutMC + mean(dataporg$goout))  - 0.20785*dataporg$addressurban + 0.23449  *dataporg$addressurban*(dataporg$gooutMC + mean(dataporg$goout))
+# Laden der ggplot2-Bibliothek (falls nicht bereits geladen)
+library(ggplot2)
+
+# Erstelle den Plot
+ggplot(dataporg, aes(x = goout, y = Prediction_interaction2_fullmodel, color = factor(address))) +
+  geom_line(aes(group = address), linetype = "solid") +
+  labs(x = "Going out", y = "Alcohol consumption", color = "Adress") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  scale_color_manual(values = c("U" = "red", "R" = "blue")) +
+  guides(color = guide_legend(title = "Adress"))
+
+
+```
+
+### Interpretation
+
+In this case the interaction effect is not significant, so we would not
+derive any suggestions for policymakers based on this result.
+
+## 3. Hypothesis
+
+The effect of studytime on alcohol consumption is dependent on the fact
+if the student wants to take higher education. Our assumption would be
+that if a student wants to take higher education the more he or she
+studies the less alcohol he or she drinks.
+
+### Step 1 - Mean centering
+
+We need to mean center the variable for studytime. For the variable
+which expresses if the student wants to take higher education, we don't
+need mean centering, since there is a natural interpretation when the
+variable is 0 (student does not want higher education).
+
+```{r echo=FALSE }
+#Mean centering studytime
+dataporg$studytimeMC <- dataporg$studytime - mean(dataporg$studytime)
+```
+
+### Step 2 - Computing the interaction term
+
+Not necessary when using R.
+
+### Step 3 - Analyzing the basic model
+
+As seen above in the basic model 5 variables had a significant effect on
+the drinking behavior and the value for the adjusted R-squared is
+27,93%.
+
+### Step 4 - Analyze the full model
+
+Now the interaction term between higher education and studytime is
+added.
+
+```{r echo=FALSE , out.width='70%', fig.asp=0.7, fig.align='center'}
+#Regression model with interaction effect
+modelinteraction3 <- lm(Oalc ~ absences + goout  +  studytimeMC + male + famrel + higherbinary + addressurban + higherbinary:studytimeMC, data = dataporg)
+summary(modelinteraction3)
+```
+
+The value of the adjusted R-squared increased to 28,32%. The interaction
+term is significant to the 5% level. Interestingly now the studytime
+isnt significant anymore. But the significance of the variable which
+represents if the student wants to take higher education is now
+significant at the 10% level.
+
+### Step 5 - Testing the interaction
+
+First of all we can see by looking at the p-value that the interaction
+term of studytime and if the student wants to take higher education is
+significant to the 5% level.
+
+F-Test for R-squared-differences:
+
+H0: no difference between the models\
+H1: models are different
+
+```{r echo=FALSE , out.width='70%', fig.asp=0.7, fig.align='center'}
+#F-Test
+anova_results3 <- anova(modelinteraction3, modelbasicfinal)
+print(anova_results3)
+```
+
+By looking at the p-value we can derive that the models are different
+from each other at the 5% significance level. So in this case we can
+reject H0. In other words the inclusion of the interaction term added
+value to the regression model.
+
+```{r echo=FALSE , out.width='70%', fig.asp=0.7, fig.align='center'}
+#interaction effect plot
+dataporg$Prediction_interaction3_fullmodel <- 2.95382  + 0.34009*(dataporg$studytimeMC + mean(dataporg$studytime))  - 0.45103*dataporg$higherbinary - 0.61097 *dataporg$higherbinary*(dataporg$studytimeMC + mean(dataporg$studytimeMC))
+# Laden der ggplot2-Bibliothek (falls nicht bereits geladen)
+library(ggplot2)
+
+# Erstelle den Plot
+ggplot(dataporg, aes(x = studytime, y = Prediction_interaction3_fullmodel, color = factor(higher))) +
+  geom_line(aes(group = higher), linetype = "solid") +
+  labs(x = "Studytime", y = "Alcohol consumption", color = "Higher education") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  scale_color_manual(values = c("yes" = "green", "no" = "red")) +
+  guides(color = guide_legend(title = "Higher education"))
+
+
+```
+
+### Interpretation
+
+The results imply that there is a significant disordinal interaction
+effect between studytime and whether a student wants higher education on
+alcohol consumption. Specifically the alcohol consumption goes up with
+studytime, when a student does not want to take higher education. But if
+the students aims for higher education the alcohol consumption goes down
+with studytime.
+
+A reason behind that could be that students who want to take higher
+education set that as their goal. So if they study a lot that could
+maybe be a sign that they are really focused on this goal and maybe
+realized that alcohol consumption could lower their chances of higher
+education since then they have less time for studying and have more days
+where their brain capacity is restricted because of the alcohol intake
+the day before. This maybe could hurt their grade which is important to
+get into higher education. Students who don't aim for higher education
+don't have that goal. So one possible explanation why their alcohol
+consumption goes up with studytime could be that they want to reward
+themselves for the time they put into studying by going out with friends
+and drink alcohol.
+
+A suggestion for policymakers could be to target the students who don't
+aim for higher education. So they could create a alcohol prevention
+program which focuses to prevent students from using alcohol as a
+reward. Another suggestion could be to target the students who aim for
+higher education and make them clear that their current grades are
+important if they want to have the chance for higher education. This
+could maybe then increase studytime and therefore decrease alcohol
+consumption.

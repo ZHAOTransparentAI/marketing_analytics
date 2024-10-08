@@ -1,0 +1,847 @@
+---
+title: "| ![](../Images/Logo/Logo_KIT.png){width=2in} \\vspace{0.2in} \n`r format(params$title)`\n - Marketing Analytics \\vspace{0.1in} "
+subtitle: "Institute of Information Systems and Marketing (IISM)"
+author: "Julius Korch, Marco Schneider, Stefan Stumpf, Zhaotai Liu \n \\vspace{1in} "
+date: "Last compiled on `r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  pdf_document:
+    toc: true
+params:
+  title: "Problemset 2"
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+install_package_if_required <- function(package_names) {
+  for (package_name in package_names) {
+    if (!requireNamespace(package_name, quietly = TRUE)) {
+      install.packages(package_name)
+    }
+  }
+}
+install_package_if_required(c("haven","lubridate","dplyr", "AER", "ggplot2" , "estimatr"))
+library(haven)
+library(lubridate)
+library(dplyr)
+library(AER)
+library(ggplot2)
+
+# Define project colors
+primary <- '#3A6B35'
+secondary <- '#79ab74'
+tertiary <- '#E3B448'
+quaternary <- '#E0A96D'
+quinary <- '#B85042'
+senary <- '#F1AC88'
+septenary <- '#79A7D3'
+octonary <- '#6883BC'
+nonary <- '#8A307F'
+denary <- '#2F3C7E'
+eleventh <- '#FF69B4'
+dark <- '#28282B'
+```
+
+\newpage
+
+# Task 1: Price and Shopping Frequency
+
+## Our Approach
+
+For this task we interpreted that it is first necessary to fully
+reconstruct the dataset and model used in the paper. Even though in the
+FAQ we later found out that it was not necessary to rebuild the model
+1-to-1 the work was done already. In the following we will describe the
+approach we took prior to the knowledge of the FAQ.
+
+1.  We read through the paper and noted important information that we
+    would later need for the code reconstruction
+2.  We converted the State code that was provided by the authors to R
+    code. This took us the most time but with the evaluation method
+    below we eventually got the right configuration for the dataset and
+    model
+3.  To evaluate whether the dataset and the log-log model was correctly
+    reconstructed we used the $\alpha_s$ coefficient that is provided in
+    table 3 of the paper. Based on that, the value should be
+    $\alpha_s = -0.001$ . As you can see in the code output below our
+    output value for the coefficient is $-0.009$ which basically is the
+    value provided by the authors if rounded up. Furthermore the authors
+    provided the $\alpha_s$ value for the log-log models including the
+    instruments which are $\alpha_s = -0.189$ when using the age
+    instrument and $\alpha_s = -0.074$ when using the income instrument.
+    Applying our reconstructed model on the data provided us with the
+    same results which further assured us that we reconstructed the
+    model.
+4.  Using the log-log model as a base we created a basic linear model
+    and a quadratic model for comparison
+
+```{r include=FALSE}
+transformToPaperData <- function(df) {
+  
+  df <- read_dta("Material/denver.dta")
+  
+  #tdate  auf Format d-m-Y umstellen
+  df$tdate <- as.Date(df$tdate, format = "%d-%m-%Y")
+  
+  # Erstelle Spalten für Monat und Tag
+  df$month <- month(df$tdate)
+  df$day <- day(df$tdate)
+  
+  # Filtere Datensätze mit month == 4 und year == 1995
+  df1 <- df[!(df$month == 4 & year(df$tdate) == 1995), ]
+  
+  # Lösche Spalte day
+  df1 <- df1[,!(names(df) %in% c("day"))]
+  
+  # Erstelle die Spalte age_head mit den Werten aus mhage
+  df1 <- df1 %>%
+    mutate(age_head = mhage)
+  # Ersetze Werte in age_head durch fhage, wenn mhage gleich 0 ist
+  df1$age_head[df1$mhage == 0] <- df1$fhage
+  
+  for (x in 1:8) {
+    col_name <- paste("kitch_", x, sep = "")
+    df1 <- df1 %>%
+      mutate(!!col_name := ifelse(kitch == x, TRUE, FALSE))
+    # Ersetze mit NA, wenn kitch NA ist
+    df1[[col_name]][is.na(df1$kitch)] <- NA
+  }
+  
+  # Gruppierung nach nhsout und acnpstor
+  df1$store <- as.integer(factor(paste(df1$nhsout, df1$acnpstor)))
+  
+  # Benenne die Variable um
+  names(df1)[names(df1) == "store"] <- "store identifier"
+  
+  # Gruppierung nach chain
+  df1$chain <- as.integer(factor(df1$nhsout))
+  
+  # Benenne die Variable um
+  names(df1)[names(df1) == "chain"] <- "chain identifier"
+  
+  # Create count variable
+  df1$count <- ave(seq_along(df1$`chain identifier`), df1$`chain identifier`, FUN = length)
+  
+  # Spalte einfügen für große Ketten
+  df1$big_chain <- as.integer(df1$count >= 50000)
+
+  # average pshopage must be on for every panid per month between 25 and 74
+  df1 <- df1 %>% group_by(panid, year, month) %>% filter(mean(pshopage) >= 25 & mean(pshopage) < 75)
+  
+  '# check how many households are left (must be 2056)
+  length(unique(df1$panid))
+  
+  # check how many monthly observations are left (must be 41175)
+  print(length(unique(paste(df1$panid, df1$year, df1$month))))
+  df1 <- df1 %>% group_by(panid, year, month) %>% filter(mean(pshopage) >= 25 & mean(pshopage) < 75)'
+
+  # Create new column for the original price paid
+  df1$price_orig <- df1$price
+  
+  # Calculate the actual price paid per unit
+  df1$price <- (df1$price_orig - df1$couponv) / df1$qty
+  
+  # Create column for the price per unit without coupon
+  df1$price_no_coup <- df1$price_orig / df1$qty
+  
+  # Create column for price paid in transaction (actual price paid per unit * quantity) -> p*q
+  df1$pq <- df1$price_orig - df1$couponv
+  
+  # Create column for price paid in transaction without coupon (price per unit without coupon * quantity) -> p*q
+  df1$pq_no_coup <- df1$price_orig
+  
+  # Create column for sum of actual price paid per month per product
+  df1$sum_price <- ave(df1$pq, df1$month, df1$year, df1$upc, FUN = sum)
+  
+  # Create column for sum of price paid per month per product without coupon
+  df1$sum_price_no_coup <- ave(df1$pq_no_coup, df1$month, df1$year, df1$upc, FUN = sum)
+  
+  # (8) Create column for sum of quantity bought per month per product
+  df1$sum_qty <- ave(df1$qty, df1$month, df1$year, df1$upc, FUN = sum)
+  
+  # (7) Average price paid per unit per product per month without coupon (Question: Where do we know from that we have to calculate without coupon??)
+  df1$p_bar <- df1$sum_price_no_coup / df1$sum_qty
+  
+  # (6) Monthly expenditures per household
+  df1$X <- ave(df1$pq, df1$panid, df1$month, df1$year, FUN = sum)
+  df1$X_no_coup <- ave(df1$pq_no_coup, df1$panid, df1$month, df1$year, FUN = sum)
+  df1$lnX <- ifelse(df1$X > 0, log(df1$X), NA)
+  
+
+  
+  # X_month is not allowed to be 0
+  df1 <- df1 %>% group_by(panid, year, month) %>% filter(X != 0)
+  
+  '# Check number of households left (must be 2056)
+  length(unique(df1$panid))
+  
+  # Check number of monthly observations left (must be 41173)
+  print(length(unique(paste(df1$panid, df1$year, df1$month))))
+  
+  # Check number of single transactions (must be 920295)
+  dim(df1)'
+  
+  # Price Index
+
+  # (9) Amount that would have been spent for each transaction with the monthly average prices per unit
+  df1$p_bar_q <- df1$p_bar * df1$qty
+  
+  # (9) Total amount a household would have spent per month with the monthly average prices per unit
+  df1$Q <- ave(df1$p_bar_q, df1$panid, df1$month, df1$year, FUN = sum, na.rm = TRUE)
+  df1$lnQ <- ifelse(df1$Q > 0, log(df1$Q), NA)
+  
+  # (10) Price index for a household
+  df1$ptilde <- df1$X / df1$Q
+  
+  df1$dates <- as.integer(!duplicated(paste(df1$tdate, df1$panid, df1$`store identifier`, sep = "_")))
+  df1$trips <- ave(df1$dates, df1$panid, FUN = sum)
+  df1
+  
+  # create a cloumn with the minimum/maximum tdate for every panid
+  df1$mindate <- ave(df1$tdate, df1$panid, FUN = min)
+  df1$maxdate <- ave(df1$tdate, df1$panid, FUN = max)
+  
+  # Caluclate days in sample per panid
+  df1$length <- as.numeric(df1$maxdate - df1$mindate) + 1
+  
+  # Calculate months in sample per panid
+  df1$numbermonths <- as.numeric(round(df1$length / 30.42)) +1
+  
+  # N (Number of Unique Products Purchased)
+  df1 <- df1 %>%
+    group_by(upc, panid, month, year) %>%
+    mutate(id = if_else(row_number() == 1, 1, 0)) %>%
+    ungroup()
+  
+  df_N <- df1 %>%
+    group_by(panid, month, year) %>%
+    summarise(N = sum(id))
+  
+  df1 <- merge(df1, df_N, by = c("panid", "month", "year"))
+  
+  #  Nmod (Number of Product Categories Purchased)
+  df1 <- df1 %>%
+    group_by(modcode, panid, month, year) %>%
+    mutate(idmod = if_else(row_number() == 1, 1, 0)) %>%
+    ungroup()
+  
+  # Calculate Nmod as the sum of idmod for each panid, month, and year
+  df_Nmod <- df1 %>%
+    group_by(panid, month, year) %>%
+    summarise(Nmod = sum(idmod))
+  
+  # Merge back with the original data
+  df1 <- merge(df1, df_Nmod, by = c("panid", "month", "year"))
+  
+  # Collapse
+  df1 <- df1 %>%
+    group_by(panid, year, month) %>%
+    summarise(
+      fhemp = mean(fhemp),
+      mhemp = mean(mhemp),
+      hhcomp = mean(hhcomp),
+      mhed = mean(mhed),
+      fhed = mean(fhed),
+      hisp = mean(hisp),
+      income = mean(income),
+      child = mean(child),
+      race = mean(race),
+      mhage = mean(mhage),
+      fhage = mean(fhage),
+      age_head = mean(age_head),
+      hhsize = mean(hhsize),
+      pshopage = mean(pshopage),
+      pshopsex = mean(pshopsex),
+      kitch_1 = mean(kitch_1),
+      kitch_2 = mean(kitch_2),
+      kitch_3 = mean(kitch_3),
+      kitch_4 = mean(kitch_4),
+      kitch_5 = mean(kitch_5),
+      kitch_6 = mean(kitch_6),
+      kitch_7 = mean(kitch_7),
+      kitch_8 = mean(kitch_8),
+      X = mean(X),
+      X_no_coup = mean(X_no_coup),
+      Q = mean(Q),
+      lnQ = mean(lnQ),
+      lnX = mean(lnX),
+      ptilde = mean(ptilde),
+      length = mean(length),
+      numbermonths = mean(numbermonths),
+      #trips_per_store = sum(trips_per_store),
+      N = mean(N),
+      Nmod = mean(Nmod),
+      #brand_loyalty = sum(brand_loyalty),
+      #coupon_total = sum(coupon_total),
+      dates = sum(dates),
+      #numberstores = sum(numberstores),
+      #numberchains = sum(numberchains),
+      #chain_purch_1 = sum(chain_purch_1),
+      #chain_purch_2 = sum(chain_purch_2),
+      #chain_purch_3 = sum(chain_purch_3),
+      #chain_purch_4 = sum(chain_purch_4),
+      #chain_purch_5 = sum(chain_purch_5)
+    )
+  
+  # Erstellen Sie eine Datumsvariable aus den Spalten year und month
+  df1$date <- ym(paste(df1$year, df1$month, sep = "-"))
+  # Ändern Sie das Datumsformat
+  df1$date <- format(df1$date, "%Y-%m")
+  
+  # Calculate shopping frequency
+  #df1$freq <- df1$trips / df1$numbermonths
+  df1$freq <- df1$dates
+  
+  df1$ln_freq <- ifelse(df1$freq>0, log(df1$freq), NA)
+  
+  # First, create a filtered version of df1 with non-missing Q, panid, and ln_freq
+  df1_filtered <- df1 %>%
+    filter(!is.na(Q), !is.na(panid), !is.na(ln_freq)) %>%
+    group_by(date) %>%
+    summarize(mean_ptilde = mean(ptilde, na.rm = TRUE)) %>%
+    ungroup()
+  
+  # Then, merge the calculated means back with the original dataframe
+  # Rows without a corresponding 'mean_ptilde' will not be included
+  df1 <- merge(df1, df1_filtered, by = "date")
+  
+  df1$p_index_norm <- df1$ptilde / df1$mean_ptilde
+  
+  #  lnP (Log of Normalized Price Index)
+  lnP <- log(df1$p_index_norm)
+  df1$lnP <- lnP
+  
+  # lnN (Log of Number of Unique Products Purchased)
+  df1$lnN <- ifelse(df1$N > 0, log(df1$N), NA)
+  
+  #  ln_Nmod (Log of Number of Product Categories Purchased)
+  df1$ln_Nmod <- ifelse(df1$Nmod > 0, log(df1$Nmod), NA)
+  
+  
+  # lnQ (Log of Expenditures at Average Prices) - Wurde oben schon berechnet
+  '/*Expenditures at average prices*/
+  gen p_bar_q=p_bar*qty;
+  egen Q=sum(p_bar_q), by(panid month year);
+  gen lnQ=ln(Q);'
+  
+  #df_Q <- df1 %>%
+   # mutate(p_bar_q = p_bar * qty) %>%
+  #  group_by(panid, month, year) %>%
+   # summarise(Q = sum(p_bar_q, na.rm = TRUE))
+  
+  #df_Q <- df_Q %>%
+   # mutate(lnQ = ifelse(Q > 0, log(Q), NA))
+  
+  #df1 <- merge
+  
+  # add the income categories
+  df1 <- df1 %>%
+    mutate(inc_cat = case_when(
+      is.na(income) ~ NA_real_,
+      income <= 15 ~ 1,
+      income > 15 & income <= 19 ~ 2,
+      income > 19 & income <= 23 ~ 3,
+      income > 23 ~ 4
+    ))
+  # add hh size categories
+
+   df1 <- df1 %>%
+    mutate(hhsize_cat = case_when(
+      is.na(hhsize) ~ NA_real_,
+      hhsize == 1 ~ 1,
+      hhsize == 2 ~ 2,
+      hhsize == 3 ~ 3,
+      hhsize == 4 ~ 4,
+      hhsize == 5 ~ 5,
+      hhsize >= 6 ~ 6
+    ))
+  
+  
+  return(df1)
+}
+ 
+
+applyFiltering <- function(df.transformed) {
+  # Erstelle eine Gruppenvariable py (equivalent zu egen py=group(panid year) in Stata)
+  df.filtered <- df.transformed %>%
+    group_by(panid, year) %>%
+    mutate(py = group_indices())
+  
+  # Erstelle die Zusammenfassung (collapse) nach py
+  df.filtered <- df.filtered %>%
+    summarise(
+      panid = first(panid),
+      year = first(year),
+      lnP = mean(lnP, na.rm = TRUE),
+      lnX = mean(lnX, na.rm = TRUE),
+      pshopage = mean(pshopage, na.rm = TRUE),
+      ln_freq = mean(ln_freq, na.rm = TRUE),
+      freq = mean(freq, na.rm = TRUE),
+      lnN = mean(lnN, na.rm = TRUE),
+      ln_Nmod = mean(ln_Nmod, na.rm = TRUE),
+      lnQ = mean(lnQ, na.rm = TRUE),
+      inc_cat = first(inc_cat),
+      p_index_norm = mean(p_index_norm, na.rm = TRUE),
+      N = mean(N, na.rm = TRUE),
+      Nmod = mean(Nmod, na.rm = TRUE),
+      Q = mean(Q, na.rm = TRUE),
+      dates = first(dates),
+      #hhsize_cat = first(hhsize_cat),
+      hhsize = mean(hhsize),
+      #dual_worker = first(dual_worker),
+      hhcomp = first(hhcomp),
+      #ln_tps = mean(ln_tps, na.rm = TRUE),
+      #ln_ns = mean(ln_ns, na.rm = TRUE),
+      #numberstores = mean(numberstores, na.rm = TRUE),
+      #trips_per_store = mean(trips_per_store, na.rm = TRUE),
+      #coupon_use = sum(coupon_use, na.rm = TRUE),
+      #used_coupon = first(used_coupon)
+    )
+  return(df.filtered)
+}
+```
+
+```{r}
+
+# check first if the transformed data already exists in the material folder
+if (!file.exists("Material/denver_transformed.csv")) {
+  # if not, transform the data
+  data <- read_dta("Material/denver.dta")
+  df.transformed <- transformToPaperData(data)
+  # save the transformed data
+  write.csv(df.transformed, "Material/denver_transformed.csv", row.names = FALSE)
+} else {
+  # if it exists, load the transformed data
+  df.transformed <- read.csv("Material/denver_transformed.csv")
+}
+
+# check if the filtered data already exists in the material folder
+if (!file.exists("Material/denver_filtered.csv")) {
+  # if not, filter the data
+  df.filtered <- applyFiltering(df.transformed)
+  # save the filtered data
+  write.csv(df.filtered, "Material/denver_filtered.csv", row.names = FALSE)
+} else {
+  # if it exists, load the filtered data
+  df.filtered <- read.csv("Material/denver_filtered.csv")
+}
+```
+
+```{r}
+# loading the data and transforming it into the paper data
+
+df_transformed <- df.filtered
+
+```
+
+\small
+
+```{r}
+# This is the code for creating the log linear function
+df_filtered <- df_transformed[df_transformed$pshopage >= 25 & df_transformed$pshopage < 75, ] 
+lm.log <- lm(lnP ~ ln_freq + lnN + ln_Nmod + lnQ, 
+             data = df_filtered,
+             robust = TRUE,
+             cluster = ~panid)
+
+alpha_s <- coef(lm.log)["ln_freq"]
+print(paste("The alpha_s value should be -0.01. The alpha value for our model is: ", alpha_s))
+```
+
+\normalsize
+
+## Creating the price index and frequency
+
+For the creation of the price index and the shopping intensity we
+closely followed the index mentioned in the paper. The shopping
+intensity is calculated as the average number of grocery trips per
+month. The formula for the price index is given as:
+$\tilde{p}^j_m \equiv \frac{X^j_m}{Q^j_m}$ where $X^j_m$ is the total
+expenditure for household $j$ in month $m$ and $Q^j_m$ is the average
+price a household paid for the same basket of goods in month $m$.
+Additionally the price index is normalized to be centered around 1 by
+taking the average:
+$\tilde{p}^j_m \equiv \frac{\tilde{p}^j_m}{\frac{1}{J}\sum_{j'}\tilde{p}^{j'}_m}$
+
+Next we take a look at the distribution of the price index and the
+shopping intensity
+
+```{r echo=FALSE, fig.align='center', fig.asp=0.7, out.width='70%'}
+ggplot(df.filtered, aes(x = p_index_norm)) +
+    geom_histogram(binwidth = 0.01, fill = tertiary, color = dark) +
+    theme_minimal() +
+    xlab("Price Index Norm") +
+    ylab("Frequency") +
+    ggtitle("Distribution of Price Index Norm")
+```
+
+The distribution of the price index reflects the centering around 1. As
+seen in the plot above most of the observations are around 1. The
+distribution looks mostly normally distributed with a slight left skew.
+
+```{r echo=FALSE, fig.align='center', fig.asp=0.7, out.width='70%'}
+ggplot(df.filtered, aes(x = freq)) +
+    geom_histogram(binwidth = 1, fill = tertiary, color = dark) +
+    theme_minimal() +
+    xlab("Frequency") +
+    ylab("Count") +
+    ggtitle("Distribution of Frequency")
+```
+
+Looking at the distribution for the frequency we can see that most of
+the observations are around 4-7 which indicates that most of the
+households are shopping 4-7 times per month. The distributions also
+looks normally distributed with a right skew.
+
+### Using control variables
+
+Even though in the FAQ it was said that the model is expected to only
+include the frequency: $lnP \sim ln-freq$, because we recreated the
+original model which uses control variables, we also included those in
+our models: $lnP \sim ln-freq + lnN + ln-Nmod + lnQ$.
+
+```{r echo=FALSE, fig.align='center', fig.asp=0.7, out.width='70%'}
+# Scatterplot to show the relationship between p_index_norm and freq
+library(ggplot2)
+ggplot(df_filtered, aes(x = freq, y = p_index_norm)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue", linetype = "dashed", size = 1) +  # Lineare Funktion
+  geom_smooth(method = "loess", se = FALSE, color = "red", size = 1) +  # Nichtlineare Funktion
+  stat_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "green", size = 1) +  # Polynomial Funktion (quadratisch)
+  stat_smooth(method = "lm", formula = y ~ exp(x), se = FALSE, color = "purple", size = 1) +  # Exponentielle Funktion
+  stat_smooth(method = "lm", formula = y ~ log(x), se = FALSE, color = "orange", size = 1) +
+  labs(x = "Shopping Frequency", y = "Normalized Price Index") +
+  theme_bw() +
+  annotate("text", x = 35, y = 2, label = "Linear", color = "blue") +
+  annotate("text", x = 35, y = 2.2, label = "Loess", color = "red") +
+  annotate("text", x = 35, y = 2.4, label = "Polynomial", color = "green") +
+  annotate("text", x = 35, y = 2.6, label = "Exponential", color = "purple") +
+  annotate("text", x = 35, y = 2.8, label = "Logarithmic", color = "orange")
+```
+
+In the figure shown above, we approximate the relationship between
+Frequency and the normalized price index using various functions. Here
+we consider, on the one hand, a simple linear, a logarithmic, an
+exponential and a polynomial (x\^2) function. From the graph we see that
+the linear function is very similar to the logarithmic function.
+Accordingly, it would be interesting to find out whether a linear model
+quantifies the relationship between normalized price index and shopping
+frequency in a very similar way and shows similar model performance. In
+contrast to the log-linear function used by Aguiar and Hurst, a linear
+function could be a more straightforward alternative. This approach may
+be simpler but could potentially be less accurate in capturing the
+complexities of the relationship.\
+By simply looking at the data in the graph, we would expect a curve that
+resembles a polynomial function. Accordingly, below we also examine the
+coefficient and the model performance, which is achieved with a
+polynomial model.
+
+Sieht aus wie Supersaturation.....
+
+**Linear Model:**
+
+```{r}
+library(estimatr)
+lm.lin <- lm(p_index_norm ~ freq+ N + Nmod + Q, 
+              data = df_filtered,
+              )
+summary(lm.lin)
+```
+
+**Polynomial Model:**
+
+```{r}
+lm.poly <- lm(p_index_norm ~ poly(freq, 3) + N + Nmod + Q, 
+              data = df_filtered,
+              )
+summary(lm.poly)
+```
+
+By setting up the linear model and the polynomial model, we can find an
+instability in the coefficient between normalized price index and
+frequency. The regression coefficient from the linear model
+$(-0.00016 = \sim 0.000)$ is smaller compared to the regression
+coefficient from the log-lin model $(-0.009 =\sim -0.01)$. In addition,
+the effect of frequency on the normalized price index is no longer
+significant. This means that it can no longer be shown that there is any
+effect of frequency on the normalized price index. However, the Adjsuted
+R-Squares of both models are close, meaning that the independent
+variables explain a similar proportion of the variance of the normalized
+price index. What is interesting is that the regression coefficient from
+the polynomial model takes on a positive, significant value
+$(-0.1218 =\sim -0.122)$. The conclusion from the polynomial model would
+be that with a higher frequency the normalized price index also
+increases. This means that household spending increases as more frequent
+purchases occur. This contrasts with the results of Aguiar and Hurst.
+Overall, our comparison shows instability in the regression coefficient
+between frequency and normalized price index.
+
+```{r eval=FALSE, include=FALSE}
+# This is the code for creating the linear function
+lm.ln <- lm(p_index_norm ~ poly(dates,2) + N + Nmod + Q, data = df_filtered)
+summary(lm.ln)
+```
+
+# Task 2: Endogeneity
+
+## Endogeneity in the shopping frequency-price function
+
+Endogeneity refers to a situation in which one or more explanatory variables in a statistical model are correlated with the error term (residuals) of the model.
+
+In their paper, Aguiar and Hurst argue that the shopping frequency-price
+function suffers from endogeneity because the shopping productivity or
+the shopping skill is omitted in the model. Basically that means that
+the influence of shopping frequency on the price paid is biased by the
+fact that different people have different skills at shopping and for
+some it might be easier to find the lowest price for a product and
+therefore those people need less shopping trips and still pay lower
+prices. So in this case the OLS estimates of the effect of shopping
+frequency on price may be wrong, directly speaking biased downwards
+because the shopping productivity is not included in the model but a
+higher shopping productivity leads to less shopping trips but also lower
+prices paid.
+
+To isolate the effect of shopping frequency on price the authors use 3
+different instrumental variables (age, income, family size) which
+predict the shopping frequency but are not influenced by the shopping
+productivity. Since we only have to pick 2 instruments for our analysis,
+we decided to use income and family size, because we would expect that
+age also is influenced by shopping productivity because older people
+have more experience in shopping and therefore they are more "skilled"
+in it.
+
+## Instrumental variables
+
+### Model without accounting for endogeneity
+```{r eval=FALSE}
+# run the log linear function with the age categories
+lm.log.freq <- ivreg(lnP ~  ln_freq ,
+              data = df_filtered)
+summary(lm.log.freq)
+```
+
+### Income
+
+One of the instruments the authors use is the income or wage. They argue
+that a higher wage leads to less shopping trips which they already
+stated earlier in the paper. First of all we computed the correlation
+between the shopping frequency and the categorical income variable to
+test if income is actually able to predict the shopping frequency of the
+household. The results of the correlation can be seen below:
+
+```{r echo=FALSE}
+korrelation <- cor(df_filtered$inc_cat, df_filtered$freq)
+korrelation
+```
+
+In this case the correlation has a negative sign which confirms the
+negative relationship between shopping frequency and income so that when
+a household is in an higher income category they do less shopping trips
+than a similar household in a lower income category. A possible
+explanation for this effect could be that people with higher income tend
+to work more and longer to get this income and therefore they have less
+time for shopping and do less trips. So the instrument income is
+relevant enough to predict the shopping frequency.
+
+Another requirement for the instrumental variable is that it is
+independent of the omitted variable in this case the shopping
+productivity or the shopping skill. Since income and the shopping
+productivity do not have anything to do with each other, we would not
+expect an influence of shopping productivity on income and therefore income should isolate the exogenous variation in the indigenous variable (shopping frequency).
+
+
+### 1. Step 1 - Regress x on the instruments
+```{r eval=FALSE}
+# run the log linear function with the age categories
+lm.log.income <- lm(ln_freq ~ inc_cat + lnN + ln_Nmod + lnQ,
+              data = df_filtered)
+summary(lm.log.income)
+```
+```{r}
+df_filtered$frequencyhatincome <- -0.060092 - 0.051878*df_filtered$inc_cat + 0.493209*df_filtered$lnN - 0.266988 * df_filtered$ln_Nmod + 0.318001*df_filtered$lnQ
+```
+
+```{r}
+# run the log linear function in main model
+lm.log.income <- lm(lnP ~ frequencyhatincome + lnN + ln_Nmod + lnQ,
+              data = df_filtered)
+summary(lm.log.income)
+```
+
+
+```{r}
+lm.log.inc <- ivreg(lnP ~ ln_freq + lnN + ln_Nmod + lnQ | inc_cat + lnN + ln_Nmod + lnQ,
+              data = df_filtered,
+              robust = TRUE,
+              cluster = ~panid)
+summary(lm.log.inc)
+```
+
+
+
+
+
+
+## Family Size 
+
+```{r} 
+df_filtered$hhsize_cat <- df_filtered$hhsize
+df_filtered$hhsize_cat[df_filtered$hhsize_cat> 6] <- 6
+
+```
+
+
+
+```{r eval=FALSE}
+# run the log linear function with the age categories
+lm.log.income <- lm(ln_freq ~ hhsize_cat + lnN + ln_Nmod + lnQ,
+              data = df_filtered)
+summary(lm.log.income)
+```
+
+```{r}
+df_filtered$frequencyhathhcomp <- -0.288919 + 0.019376*df_filtered$inc_cat + 0.508556*df_filtered$lnN - 0.238952 * df_filtered$ln_Nmod + 0.311847*df_filtered$lnQ
+```
+
+```{r}
+# run the log linear function 
+lm.log.income <- ivreg(lnP ~ frequencyhathhcomp + lnN + ln_Nmod + lnQ,
+              data = df_filtered)
+summary(lm.log.income)
+```
+
+```{r}
+lm.log.hhcomp <- ivreg(lnP ~ ln_freq + lnN + ln_Nmod + lnQ | hhsize_cat + lnN + ln_Nmod + lnQ,
+              data = df_filtered,
+              robust = TRUE,
+              cluster = ~panid)
+summary(lm.log.hhcomp)
+```
+
+
+
+
+
+```{r eval=FALSE, include=FALSE}
+# add the age categories
+df_filtered <- df_filtered %>%
+  mutate(age_range = case_when(
+    pshopage >= 25 & pshopage < 30 ~ "25-29",
+    pshopage >= 30 & pshopage < 35 ~ "30-34",
+    pshopage >= 35 & pshopage < 40 ~ "35-39",
+    pshopage >= 40 & pshopage < 45 ~ "40-44",
+    pshopage >= 45 & pshopage < 50 ~ "45-49",
+    pshopage >= 50 & pshopage < 55 ~ "50-54",
+    pshopage >= 55 & pshopage < 60 ~ "55-59",
+    pshopage >= 60 & pshopage < 65 ~ "60-64",
+    pshopage >= 65 & pshopage < 75 ~ "65-74"
+  ))
+
+zuordnungstabelle <- c("25-29" = 1 , "30-34" = 2 , "35-39" = 3 , "40-44" = 4 , "45-49" = 5 , "50-54" = 6 , "55-59" = 7 , "60-64" = 8, "65-74" = 9)
+df_filtered$age_dummy <- zuordnungstabelle[df_filtered$age_range]
+
+df_filtered$ln_age_dummy <- log(df_filtered$age_dummy)
+```
+
+
+
+```{r eval=FALSE}
+# run the log linear function with the age categories
+lm.log.age <- ivreg(lnP ~  ln_freq + lnN + ln_Nmod + lnQ |age_range + lnN + ln_Nmod + lnQ,
+              data = df_filtered,
+              robust = TRUE,
+              cluster = ~panid)
+summary(lm.log.age)
+```
+
+# Task 3:Clustered data
+
+##  The prolblem of clustered data structure and the need for building a price index
+The problem of a clustered data structure in a dataset, such as the one used by Aguiar and Hurst (2007), arises from the nature of the data being grouped at different levels (in this case, at the household and product levels). This clustering can lead to several issues:
+
+1. Non-Independence of Observations: In clustered data, observations within the same household are likely to be more similar to each other than to observations in different housholds. This violates the assumption of independent observations. If this clustering is not accounted for, it can lead to biased or incorrect inferences. 
+
+2. Heterogeneity Across Clusters: Different households might have distinct characteristics or behaviors. For example, shopping habits or preferences might vary significantly from one household to another. This heterogeneity needs to be accounted for to avoid misleading conclusions.
+
+3. Variability Within and Between Clusters: There is variability both within clusters (e.g., different prices paid by the same household for various products at different times) and between clusters (e.g., different price levels across households). Analyzing such data requires techniques that can decompose and understand both types of variability.
+
+Building a price index helps to address these issues in several ways:
+
+1. Standardizing Prices Across Households: A price index can normalize prices across different households, allowing for a more meaningful comparison. It helps to account for the fact that different households might have different shopping patterns, preferences, and access to stores and discounts.
+
+2. Controlling for Product Heterogeneity: By aggregating prices into an index, the variability due to different products can be controlled. This is particularly useful when households purchase a wide variety of goods, each with its own pricing dynamics.
+
+3. Facilitating Cross-Household Comparisons: An index allows researchers to compare the relative price levels across different households in a standardized way, even if the actual baskets of goods they purchase are different.
+
+
+
+## Robust standard errors 
+```{r}
+# Robust standard errors clustered at the household level for correction purposes
+library(sandwich)
+library(lmtest)
+
+# Calculate robust standard errors
+robust_se <- vcovHC(lm.log, type = "HC1", cluster = ~panid)
+
+# Getting the summary with robust standard errors
+summary_coeftest <- coeftest(lm.log, vcov = robust_se)
+summary_coeftest
+
+
+```
+In statistics, the use of robust standard errors clustered at the household level for correction purposes primarily addresses two issues:
+
+1. Heteroskedasticity:
+   Heteroskedasticity occurs when the variance of the error terms in a regression model is not constant. Traditional standard error estimates assume constant variance of error terms (homoskedasticity). If heteroskedasticity is present, traditional standard errors are no longer accurate, potentially leading to unreliable conclusions in statistical tests. Robust standard errors correct this by weighting the error terms of each observation differently, providing a more accurate estimate.
+
+2. Clustered Data Structure:
+   When data is clustered (for example, multiple observations from the same household), there may be correlations among data points. The behavior of individuals within the same household could be interdependent, causing the error terms to be correlated. This intragroup correlation violates the assumption of independent and identically distributed error terms required by Ordinary Least Squares (OLS), leading to an underestimation of the standard errors and affecting the determination of statistical significance.
+   
+The correction with robust standard errors clustered addresses these two issues:
+
+Correction for Heteroskedasticity: Robust standard errors do not rely on the assumption of uniform variance and allow for heterogeneity of variance by adjusting the variance of each observation.
+
+Correction for the Intraclass Correlation in Clustered Data: By allowing observations within the same cluster to share a common error structure (non-independence), clustered robust standard errors properly adjust for the correlation of observations within the same household.
+
+## Expectations from Fixed-Effect Modeling for Clustered Data
+
+1. Accounting for Unobserved Heterogeneity: Fixed-effect models are particularly useful in controlling for unobserved heterogeneity at the cluster level. In the context of Aguiar and Hurst’s study, this would mean accounting for all unobserved characteristics of households that do not change over time but could affect the outcome (e.g., price paid). By controlling for these unobserved characteristics, the model can isolate the effect of the variables of interest (like shopping frequency) on the dependent variable (price).
+
+2. Reduced Bias in Estimates: By controlling for these constant unobserved characteristics, fixed-effect models typically provide less biased estimates of the causal effects of the variables of interest. This is especially true in the presence of omitted variable bias due to unobserved factors.
+
+3. Change in Coefficient Magnitude and Significance: Incorporating household-level fixed effects may change the magnitude and even the statistical significance of the coefficients for the observed variables. This change occurs because the fixed-effects model removes the influence of time-invariant unobserved variables, which might have been conflating the effects in a standard regression model.
+
+## Panel Regression with Fixed Effects
+```{r}
+library(plm)
+# create a panel data frame
+panel_data <- pdata.frame(df_filtered, index = c("panid", "year"))
+# run the log linear function with the plm
+lm.log.plm <- plm(lnP ~ ln_freq + lnN + ln_Nmod + lnQ, data = panel_data, model = "within")
+
+summary(lm.log.plm)
+
+```
+
+This analysis uses a fixed effects model  to examine the relationship between the logarithm of price (lnP) and the logarithm of shopping frequency (ln_freq), along with other control variables. The data is in an unbalanced panel format with 2056 entities (households) observed over a time period ranging from 1 to 3 years, resulting in a total of 4854 observations, in consistent with the original paper.
+
+   - `ln_freq`: The coefficient of ln_freq is 0.01642 with a standard error of 0.00501. Its t-value is 3.2754, and it is statistically significant at the 1% level (p-value = 0.001068). This implies that there is a positive relationship between shopping frequency and price; as shopping frequency increases, the price also tends to increase, holding other factors constant.
+
+Households that shop more frequently tend to pay higher prices possibly due to several factors:
+
+1. **Convenience Shopping**: More frequent shopping may indicate a preference for convenience. These consumers may be more likely to shop at convenient stores close to home or on the road, where prices may be higher than in large supermarkets or wholesale stores.
+
+2. **Impulse Buying**: Frequent shopping opportunities may increase the odds of impulse purchases, which often occur without price consideration and may result in paying a higher price overall.
+
+3. **Shopping Habits**: The shopping habits of some families may lead them to be more inclined to purchase high-priced items, such as organic foods, branded goods, or fresh foods, which often cost more.
+
+4. **Income level**: Families with better economic conditions may shop more frequently and may also pay less attention to prices, thus paying higher prices when shopping.
+
+
+

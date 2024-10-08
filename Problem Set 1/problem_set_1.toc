@@ -1,0 +1,34 @@
+\contentsline {section}{Task 1}{2}{section*.2}%
+\contentsline {subsection}{Key statistics of the data set}{2}{section*.3}%
+\contentsline {subsection}{Trends in the data set}{5}{section*.4}%
+\contentsline {section}{Task 2}{7}{section*.5}%
+\contentsline {subsection}{Approach}{7}{section*.6}%
+\contentsline {subsection}{Training}{7}{section*.7}%
+\contentsline {paragraph}{Testing out the performance of single features}{9}{section*.8}%
+\contentsline {paragraph}{About non linear regression}{9}{section*.9}%
+\contentsline {paragraph}{Nuisance variables}{10}{section*.10}%
+\contentsline {subsection}{Evaluation}{10}{section*.11}%
+\contentsline {subsection}{Performance prediction on fictive data}{12}{section*.12}%
+\contentsline {section}{Task 3}{12}{section*.13}%
+\contentsline {subsection}{Create a basic model}{13}{section*.14}%
+\contentsline {subsection}{1. Hypothesis}{15}{section*.15}%
+\contentsline {subsubsection}{Step 1 - Mean centering}{15}{section*.16}%
+\contentsline {subsubsection}{Step 2 - Calculating the interaction effect}{15}{section*.17}%
+\contentsline {subsubsection}{Step 3 - Analyze basic model}{15}{section*.18}%
+\contentsline {subsubsection}{Step 4 - Analyze full model}{15}{section*.19}%
+\contentsline {subsubsection}{Step 5 - Testing the interaction}{16}{section*.20}%
+\contentsline {subsubsection}{Interpretation}{17}{section*.21}%
+\contentsline {subsection}{2. Hypothesis}{17}{section*.22}%
+\contentsline {subsubsection}{Step 1 - Mean centering}{17}{section*.23}%
+\contentsline {subsubsection}{Step 2 - Computing the interaction term}{17}{section*.24}%
+\contentsline {subsubsection}{Step 3 - Analyze basic model}{17}{section*.25}%
+\contentsline {subsubsection}{Step 4 - Analyze full model}{18}{section*.26}%
+\contentsline {subsubsection}{Step 5 - Testing the interaction}{18}{section*.27}%
+\contentsline {subsubsection}{Interpretation}{19}{section*.28}%
+\contentsline {subsection}{3. Hypothesis}{19}{section*.29}%
+\contentsline {subsubsection}{Step 1 - Mean centering}{19}{section*.30}%
+\contentsline {subsubsection}{Step 2 - Computing the interaction term}{19}{section*.31}%
+\contentsline {subsubsection}{Step 3 - Analyzing the basic model}{19}{section*.32}%
+\contentsline {subsubsection}{Step 4 - Analyze the full model}{19}{section*.33}%
+\contentsline {subsubsection}{Step 5 - Testing the interaction}{20}{section*.34}%
+\contentsline {subsubsection}{Interpretation}{21}{section*.35}%
